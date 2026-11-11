@@ -46,9 +46,12 @@ Version notes
 ```bash
 git clone <this repository> chore-quests
 cd chore-quests
-pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile   # also runs `prisma generate` (postinstall)
 cp .env.example .env         # then edit values (see below)
 ```
+
+The Prisma client is generated into `src/generated/prisma`, which is git-ignored. If it is ever missing
+(for example after `pnpm install --ignore-scripts`), run `pnpm db:generate`.
 
 ## Environment configuration
 
@@ -175,5 +178,7 @@ docs/             architecture, database, gameplay, development, build health re
   `PW_CHROMIUM_PATH`.
 - **Type errors mentioning `LayoutProps` / `PageProps`** — run `pnpm typecheck` (it runs `next typegen`
   first) rather than bare `tsc`.
+- **`Cannot find module '@/generated/prisma/client'`** — the Prisma client was not generated. Run
+  `pnpm db:generate` (normally done by `pnpm install`).
 - **Better Auth: "Prisma schema mismatch"** — run `pnpm auth:schema`, review the diff in
   `prisma/schema.prisma`, then `pnpm db:migrate --name better-auth-update`.

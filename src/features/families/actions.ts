@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 import { setChildSessionCookie } from "@/lib/auth/child-session-cookie";
 import { prisma } from "@/lib/db/prisma";
-import { runAction, type ActionResult } from "@/lib/errors";
+import { AppError, runAction, type ActionResult } from "@/lib/errors";
 import {
   createChildSchema,
   createFamilySchema,
@@ -29,7 +29,7 @@ import { createFamily, updateFamilySettings } from "@/server/services/family.ser
 export async function createFamilyAction(_prev: ActionResult<unknown> | null, formData: FormData) {
   const result = await runAction(async () => {
     const ctx = await getParentContext();
-    if (!ctx) throw new Error("UNAUTHORIZED");
+    if (!ctx) throw AppError.unauthorized();
     const input = parseOrThrow(
       createFamilySchema,
       formToObject(formData, { numbers: ["weekStartsOn"] }),
