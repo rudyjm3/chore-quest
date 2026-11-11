@@ -138,10 +138,13 @@ export async function applyCompletionToGoals(
     where: {
       childId: completion.childId,
       familyId: completion.familyId,
-      status: "ACTIVE",
+      // COMPLETED is included so a recurring weekly goal finished in an earlier week can still roll
+      // forward; completed periods themselves never take new contributions (checked below).
+      status: { in: ["ACTIVE", "COMPLETED"] },
       goal: { isArchived: false },
     },
     include: { goal: true },
+    orderBy: { startDate: "desc" },
   });
 
   const touched: Array<{ goalAssignmentId: string; completed: boolean }> = [];
@@ -151,6 +154,8 @@ export async function applyCompletionToGoals(
     const goal = assignment.goal;
     if (seenGoalIds.has(goal.id)) continue;
     if (!completionMatchesGoal(goal, completion)) continue;
+
+    if (assignment.status !== "ACTIVE" && goal.recurrence !== "WEEKLY") continue;
 
     let target = assignment;
     const start = dbToLocalDate(assignment.startDate);
@@ -178,9 +183,9 @@ export async function applyCompletionToGoals(
         update: {},
         include: { goal: true },
       });
-      if (target.status !== "ACTIVE") continue;
     }
     seenGoalIds.add(goal.id);
+    if (target.status !== "ACTIVE") continue;
 
     const already = await tx.goalContribution.findUnique({
       where: {

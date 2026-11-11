@@ -7,6 +7,7 @@ import type { ChildContext, ParentContext } from "@/server/policies/context";
 import { assertFamilyScope, assertPermission } from "@/server/policies/family-access";
 
 import { recordAudit } from "./audit.service";
+import { completeRoutineStep } from "./routine.service";
 import { processCompletion, type ProcessResult } from "./progression.service";
 
 type Tx = Prisma.TransactionClient;
@@ -282,62 +283,40 @@ export async function reviewRoutineRun(
   assertFamilyScope(ctx, input.familyId);
   assertPermission(ctx, "canApprove");
   const outcome = await db.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "routine_run" WHERE id = ${input.runId}::uuid FOR UPDATE`;
+    await lockRoutineRun(tx, input.runId);
     const run = await tx.routineRun.findFirst({
       where: { id: input.runId, familyId: ctx.familyId },
-      include: { assignment: true, completion: true },
+      select: { id: true, status: true },
     });
     if (!run) throw AppError.notFound("Routine run");
     if (input.decision === "REJECTED") {
       if (run.status === "APPROVED") throw AppError.invalidState("Already approved");
+      // Reopen every step so the child can redo the routine and resubmit it.
+      await tx.routineStepProgress.updateMany({
+        where: { runId: run.id },
+        data: { status: "PENDING", completedAt: null },
+      });
       await tx.routineRun.update({
         where: { id: run.id },
-        data: { status: "REJECTED", reviewedAt: new Date() },
+        data: { status: "REJECTED", reviewedAt: new Date(), submittedAt: null },
+      });
+      await recordAudit(tx, {
+        familyId: ctx.familyId,
+        actorType: "PARENT",
+        actorUserId: ctx.userId,
+        action: "approval.routine.reject",
+        entityType: "RoutineRun",
+        entityId: run.id,
+        metadata: { note: input.note },
       });
       return { runId: run.id, decision: "REJECTED" as const, alreadyApproved: false };
     }
-    if (run.status === "APPROVED" && run.completion) {
-      return {
-        runId: run.id,
-        decision: "APPROVED" as const,
-        completionId: run.completion.id,
-        alreadyApproved: true,
-      };
-    }
-    const now = new Date();
-    await tx.routineRun.update({
-      where: { id: run.id },
-      data: { status: "APPROVED", reviewedAt: now },
-    });
-    const completion = await tx.activityCompletion.create({
-      data: {
-        familyId: run.familyId,
-        childId: run.childId,
-        sourceType: "ROUTINE_RUN",
-        routineRunId: run.id,
-        localDate: run.localDate,
-        completedAt: run.submittedAt ?? now,
-        approvedAt: now,
-        approvedByUserId: ctx.userId,
-        pointsAwarded: pointsForRoutineRun(run.bonusPointsSnapshot),
-        routineId: run.assignment.routineId,
-      },
-    });
-    await recordAudit(tx, {
-      familyId: run.familyId,
-      actorType: "PARENT",
-      actorUserId: ctx.userId,
-      action: "approval.routine.approve",
-      entityType: "RoutineRun",
-      entityId: run.id,
-      metadata: { completionId: completion.id },
-    });
-    return {
+    const approved = await approveRoutineRunTx(tx, {
       runId: run.id,
-      decision: "APPROVED" as const,
-      completionId: completion.id,
-      alreadyApproved: false,
-    };
+      reviewerUserId: ctx.userId,
+      isAutomatic: false,
+    });
+    return { runId: run.id, decision: "APPROVED" as const, ...approved };
   });
   if (outcome.decision === "APPROVED" && outcome.completionId) {
     const processing = await processCompletion(db, outcome.completionId);
@@ -346,9 +325,82 @@ export async function reviewRoutineRun(
   return outcome;
 }
 
+/**
+ * Child ticks one routine step. When the last required step is done and the assignment's
+ * policy is AUTO_APPROVE, the run is approved by the system and processed immediately;
+ * otherwise it waits in the parent's approval queue as SUBMITTED.
+ */
+export async function completeRoutineStepAndSubmit(
+  db: DbClient,
+  ctx: ChildContext,
+  runId: string,
+  stepId: string,
+) {
+  const step = await completeRoutineStep(db, ctx, runId, stepId);
+  if (!step.allStepsDone || step.approvalPolicy !== "AUTO_APPROVE") {
+    return { ...step, autoApproved: false as const };
+  }
+  const approved = await db.$transaction(async (tx) => {
+    await lockRoutineRun(tx, runId);
+    return approveRoutineRunTx(tx, { runId, reviewerUserId: null, isAutomatic: true });
+  });
+  const processing = await processCompletion(db, approved.completionId);
+  return { ...step, autoApproved: true as const, completionId: approved.completionId, processing };
+}
+
+/**
+ * Core routine-run approval. Must run with the run row locked. Idempotent: approving an
+ * already-approved run returns its existing completion.
+ */
+async function approveRoutineRunTx(
+  tx: Tx,
+  params: { runId: string; reviewerUserId: string | null; isAutomatic: boolean },
+) {
+  const run = await tx.routineRun.findUniqueOrThrow({
+    where: { id: params.runId },
+    include: { assignment: true, completion: true },
+  });
+  if (run.status === "APPROVED" && run.completion) {
+    return { completionId: run.completion.id, alreadyApproved: true };
+  }
+  const now = new Date();
+  await tx.routineRun.update({
+    where: { id: run.id },
+    data: { status: "APPROVED", reviewedAt: now },
+  });
+  const completion = await tx.activityCompletion.create({
+    data: {
+      familyId: run.familyId,
+      childId: run.childId,
+      sourceType: "ROUTINE_RUN",
+      routineRunId: run.id,
+      localDate: run.localDate,
+      completedAt: run.submittedAt ?? now,
+      approvedAt: now,
+      approvedByUserId: params.reviewerUserId,
+      pointsAwarded: pointsForRoutineRun(run.bonusPointsSnapshot),
+      routineId: run.assignment.routineId,
+    },
+  });
+  await recordAudit(tx, {
+    familyId: run.familyId,
+    actorType: params.isAutomatic ? "SYSTEM" : "PARENT",
+    actorUserId: params.reviewerUserId,
+    action: params.isAutomatic ? "approval.routine.auto" : "approval.routine.approve",
+    entityType: "RoutineRun",
+    entityId: run.id,
+    metadata: { completionId: completion.id },
+  });
+  return { completionId: completion.id, alreadyApproved: false };
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+async function lockRoutineRun(tx: Tx, runId: string) {
+  await tx.$queryRaw`SELECT id FROM "routine_run" WHERE id = ${runId}::uuid FOR UPDATE`;
+}
 
 async function lockOccurrence(tx: Tx, occurrenceId: string) {
   await tx.$queryRaw`SELECT id FROM "task_occurrence" WHERE id = ${occurrenceId}::uuid FOR UPDATE`;

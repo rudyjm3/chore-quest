@@ -17,11 +17,14 @@ reject → resubmit → approve, auto-approve, a chore feeding multiple goals, t
 streak partial index, weekly goal across a timezone boundary with weekly roll-over, chapter reward double
 claim (parallel), full Home Port → Parrot Island progression incl. puzzle gating, idempotent purchase and
 overdraft refusal, cross-family access, guardian vs owner permissions, child PIN lockout and sessions,
-recurring task edited after completion.
+recurring task edited after completion, a recurring weekly goal completed in its first week rolling forward,
+concurrent completion of a routine's last steps, auto-approved routines, rejected routines reopening
+their steps.
 
 E2E smoke: landing, health, sign-in pages, security headers, anonymous redirects, wrong password, parent
 sign-in + navigation + children list, parent session cannot enter child area, child sign-in with family
-code + PIN, today view, adventure map markers, child session cannot enter parent area, wrong PIN.
+code + PIN, today view, adventure map markers, child session cannot enter parent area, wrong PIN,
+device hand-over signs the parent out.
 
 ## Conventions
 

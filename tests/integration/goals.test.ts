@@ -188,6 +188,47 @@ describe("goals", () => {
     ).resolves.toMatchObject({ countedForStreak: false });
   });
 
+  it("a recurring weekly goal completed in its first week rolls into the next week", async () => {
+    const { family, ctx } = await createFamilyFixture(db, { weekStartsOn: 1 });
+    const { child } = await createChildFixture(db, family.id);
+    const task = await createTaskFixture(db, family.id);
+    const weekly = await createGoal(db, ctx, {
+      familyId: family.id,
+      title: "1 this week",
+      type: "WEEKLY_COUNT",
+      targetCount: 1,
+      recurrence: "WEEKLY",
+      rewardPoints: 0,
+    });
+    await assignGoal(db, ctx, {
+      familyId: family.id,
+      goalId: weekly.id,
+      childIds: [child.id],
+      startDate: "2026-11-09",
+    });
+
+    // Week of 2026-11-09: completes the only assignment.
+    await approveOn({ family, ctx, childId: child.id, taskId: task.id, localDate: "2026-11-10" });
+    const first = await db.goalAssignment.findFirstOrThrow({
+      where: { goalId: weekly.id, periodKey: "week:2026-11-09" },
+    });
+    expect(first.status).toBe("COMPLETED");
+
+    // A second chore in the same, already completed week adds nothing.
+    await approveOn({ family, ctx, childId: child.id, taskId: task.id, localDate: "2026-11-11" });
+    expect(
+      (await db.goalAssignment.findUniqueOrThrow({ where: { id: first.id } })).progressCount,
+    ).toBe(1);
+
+    // Next week: a new period is created and progresses.
+    await approveOn({ family, ctx, childId: child.id, taskId: task.id, localDate: "2026-11-17" });
+    const next = await db.goalAssignment.findFirstOrThrow({
+      where: { goalId: weekly.id, periodKey: "week:2026-11-16" },
+    });
+    expect(next.progressCount).toBe(1);
+    expect(next.status).toBe("COMPLETED");
+  });
+
   it("weekly goals use household-local dates: a late-night UTC completion lands in the right week", async () => {
     // Family in Los Angeles, week starts Monday. 2026-11-16 00:30 UTC is still Sunday 2026-11-15 in LA.
     const { family, ctx } = await createFamilyFixture(db, {

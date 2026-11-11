@@ -186,6 +186,9 @@ export async function completeRoutineStep(
   stepId: string,
 ) {
   return db.$transaction(async (tx) => {
+    // Serialize with other step completions and with parent review of the same run, so two
+    // concurrent "last step" requests cannot both read stale progress and leave the run open.
+    await tx.$queryRaw`SELECT id FROM "routine_run" WHERE id = ${runId}::uuid FOR UPDATE`;
     const run = await tx.routineRun.findFirst({
       where: { id: runId, childId: ctx.childId, familyId: ctx.familyId },
       include: {

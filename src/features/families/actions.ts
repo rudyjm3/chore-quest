@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { auth } from "@/lib/auth/auth";
 import { setChildSessionCookie } from "@/lib/auth/child-session-cookie";
 import { prisma } from "@/lib/db/prisma";
 import { AppError, runAction, type ActionResult } from "@/lib/errors";
@@ -19,6 +20,7 @@ import {
   getParentContext,
   requireParentContext,
 } from "@/server/policies/context";
+import { requireChildInFamily } from "@/server/policies/family-access";
 import {
   createChild,
   setChildPin,
@@ -88,10 +90,18 @@ export async function updateFamilySettingsAction(
   });
 }
 
-/** Parent hands the device to a child: starts a child session without a PIN. */
+/**
+ * Parent hands the device to a child: starts a child session without a PIN.
+ *
+ * The parent's Better Auth session on this device is revoked first, so the child cannot
+ * navigate back into /parent; the parent signs in again to regain access. Order matters:
+ * if sign-out fails, no child session is created.
+ */
 export async function startChildSessionAction(formData: FormData) {
   const ctx = await requireParentContext();
   const childId = String(formData.get("childId") ?? "");
+  await requireChildInFamily(prisma, ctx.familyId, childId);
+  await auth.api.signOut({ headers: await headers() });
   const { token, session } = await startChildSessionAsParent(prisma, ctx, childId);
   await setChildSessionCookie(token, session.expiresAt);
   redirect("/child");

@@ -9,7 +9,9 @@ family. Access is family-managed:
    shown to parents in Settings/Children), picks their name, and types a 4–6 digit PIN that a parent set.
    Parents can disable self sign-in per family (`family_settings.allowChildSelfSignIn`).
 2. **Hand-over from a parent device.** A signed-in parent presses "Hand device to <child>", which starts a
-   child session without a PIN (`startChildSessionAsParent`, audited with the parent's id).
+   child session without a PIN (`startChildSessionAsParent`, audited with the parent's id). The parent's
+   Better Auth session on that device is revoked first, so the child cannot open `/parent`; the parent
+   signs in again to get back in (covered by an e2e test).
 
 Both paths mint an opaque 256-bit token. Only its HMAC-SHA256 (keyed by `CHILD_SESSION_SECRET`) is stored in
 `child_session.tokenHash`; the raw token lives in the `cq_child_session` httpOnly, SameSite=Lax cookie

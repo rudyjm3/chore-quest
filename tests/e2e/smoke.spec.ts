@@ -1,19 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import { DEMO_PARENT, PARENT_STORAGE_STATE, signInAsParent } from "./fixtures";
+
+/** Child devices start with no cookies, even inside describes that reuse the parent session. */
+const ANONYMOUS = { storageState: { cookies: [], origins: [] } };
 
 /**
  * Smoke tests against the production build using the development fixtures
  * created by `pnpm db:seed:dev` (demo parent + family + children).
  */
-const DEMO_PARENT = { email: "demo.parent@chorequests.local", password: "DemoPassword123!" };
-
-async function signInAsParent(page: Page) {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").fill(DEMO_PARENT.email);
-  await page.getByLabel("Password").fill(DEMO_PARENT.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL("**/parent");
-}
-
 test.describe("public routes", () => {
   test("landing page loads with the three entry points", async ({ page }) => {
     await page.goto("/");
@@ -68,8 +63,10 @@ test.describe("protected routes reject anonymous access", () => {
 });
 
 test.describe("parent flow", () => {
-  test("parent signs in, sees the dashboard shell and navigation", async ({ page }) => {
-    await signInAsParent(page);
+  test.use({ storageState: PARENT_STORAGE_STATE });
+
+  test("signed-in parent sees the dashboard shell and navigation", async ({ page }) => {
+    await page.goto("/parent");
     await expect(page.getByTestId("parent-shell")).toBeVisible();
     await expect(page.locator('[data-testid="family-name"]:visible')).toContainText(
       "The Demo Crew",
@@ -86,25 +83,27 @@ test.describe("parent flow", () => {
   });
 
   test("a parent session does not grant child access", async ({ page }) => {
-    await signInAsParent(page);
+    await page.goto("/parent");
     await page.goto("/child");
     await expect(page).toHaveURL(/\/child\/sign-in$/);
   });
 });
 
 test.describe("child flow", () => {
+  // The parent page only reads the family code; children sign in in a fresh context.
+  test.use({ storageState: PARENT_STORAGE_STATE });
+
   test("child signs in with family code + PIN and sees today's view and the adventure map", async ({
     browser,
     page,
   }) => {
     // Read the family code from the parent UI, then sign in as a child in a fresh context.
-    await signInAsParent(page);
     await page.goto("/parent/children");
     const header = await page.getByText(/Family code for child sign-in:/).textContent();
     const familyCode = header?.split(":").pop()?.trim();
     expect(familyCode).toBeTruthy();
 
-    const childContext = await browser.newContext();
+    const childContext = await browser.newContext(ANONYMOUS);
     const child = await childContext.newPage();
     await child.goto("/child/sign-in");
     await child.getByLabel("Family code").fill(familyCode!);
@@ -135,13 +134,12 @@ test.describe("child flow", () => {
   });
 
   test("wrong PIN is rejected", async ({ page, browser }) => {
-    await signInAsParent(page);
     await page.goto("/parent/children");
     const familyCode = (await page.getByText(/Family code for child sign-in:/).textContent())
       ?.split(":")
       .pop()
       ?.trim();
-    const ctx = await browser.newContext();
+    const ctx = await browser.newContext(ANONYMOUS);
     const child = await ctx.newPage();
     await child.goto("/child/sign-in");
     await child.getByLabel("Family code").fill(familyCode!);
@@ -152,5 +150,19 @@ test.describe("child flow", () => {
     await expect(child.getByRole("alert")).toBeVisible();
     await expect(child).toHaveURL(/\/child\/sign-in$/);
     await ctx.close();
+  });
+});
+
+test.describe("device hand-over", () => {
+  // Uses its own sign-in: hand-over revokes the session it runs with, which must not be the shared one.
+  test("handing the device to a child signs the parent out", async ({ page }) => {
+    await signInAsParent(page);
+    await page.goto("/parent/children");
+    await page.getByRole("button", { name: /Hand device to Ava/ }).click();
+    await page.waitForURL("**/child");
+    await expect(page.getByTestId("child-name")).toContainText("Ava");
+    // The child must not be able to reach the parent area on this device.
+    await page.goto("/parent/approvals");
+    await expect(page).toHaveURL(/\/sign-in/);
   });
 });

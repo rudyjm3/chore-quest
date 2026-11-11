@@ -55,7 +55,7 @@ export default async function ChildrenPage() {
                 <form action={startChildSessionAction}>
                   <input type="hidden" name="childId" value={child.id} />
                   <Button type="submit" size="sm" variant="secondary">
-                    Hand device to {child.displayName}
+                    Hand device to {child.displayName} (signs you out)
                   </Button>
                 </form>
               </CardContent>

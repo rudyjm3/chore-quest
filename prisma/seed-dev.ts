@@ -80,6 +80,11 @@ export async function seedDemoFamily() {
     }
     children.push(child);
   }
+  // Re-running the dev seed restores a clean demo state: no PIN lockouts left over from testing.
+  await prisma.childCredential.updateMany({
+    where: { childId: { in: children.map((c) => c.id) } },
+    data: { failedAttempts: 0, lockedUntil: null },
+  });
 
   // Tasks from presets
   const presets = await prisma.taskPreset.findMany({

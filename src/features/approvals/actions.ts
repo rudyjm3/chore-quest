@@ -13,11 +13,11 @@ import { formToObject, parseOrThrow } from "@/lib/validation/form";
 import { completeRoutineStepSchema } from "@/lib/validation/routines";
 import { requireChildContext, requireParentContext } from "@/server/policies/context";
 import {
+  completeRoutineStepAndSubmit,
   reviewOccurrence,
   reviewRoutineRun,
   submitOccurrence,
 } from "@/server/services/approval.service";
-import { completeRoutineStep } from "@/server/services/routine.service";
 
 export async function reviewOccurrenceAction(
   _prev: ActionResult<unknown> | null,
@@ -74,8 +74,8 @@ export async function completeRoutineStepAction(
   return runAction(async () => {
     const ctx = await requireChildContext();
     const input = parseOrThrow(completeRoutineStepSchema, formToObject(formData));
-    const result = await completeRoutineStep(prisma, ctx, input.runId, input.stepId);
+    const result = await completeRoutineStepAndSubmit(prisma, ctx, input.runId, input.stepId);
     revalidatePath("/child", "layout");
-    return { allStepsDone: result.allStepsDone };
+    return { allStepsDone: result.allStepsDone, autoApproved: result.autoApproved };
   });
 }
