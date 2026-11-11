@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/chore_quests_dev?schema=public
+  TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/chore_quests_test?schema=public
+  BETTER_AUTH_SECRET: ci-only-secret-value-that-is-long-enough-0123456789
+  BETTER_AUTH_URL: http://localhost:3100
+  NEXT_PUBLIC_APP_URL: http://localhost:3100
+  CHILD_SESSION_SECRET: ci-only-child-secret-value-that-is-long-enough-0123
+
+jobs:
+  quality:
+    name: Lint, types, schema, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chore_quests_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create test database
+        run: psql "postgresql://postgres:postgres@localhost:5432/postgres" -c 'CREATE DATABASE chore_quests_test;'
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Prisma schema validation
+        run: pnpm db:validate
+
+      - name: Apply migrations (dev database)
+        run: pnpm db:migrate:deploy
+
+      - name: Migration drift check
+        run: pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      - name: Seed reference data (twice, must be idempotent)
+        run: pnpm db:seed && pnpm db:seed
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: Production build
+        run: pnpm build
+
+      - name: Seed demo family for e2e
+        run: pnpm db:seed:dev
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end smoke tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

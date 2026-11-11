@@ -1,0 +1,22 @@
+import { z } from "zod";
+
+import { uuidSchema } from "./common";
+
+export const startAdventureSchema = z.object({
+  adventureKey: z.string().min(1).max(64),
+});
+
+export const claimChapterRewardSchema = z.object({
+  chapterId: uuidSchema,
+});
+
+export const submitPuzzleSchema = z.object({
+  puzzleId: uuidSchema,
+  /** Puzzle-type specific answer payload, validated by the puzzle verifier. */
+  answer: z.unknown(),
+});
+
+export const purchaseItemSchema = z.object({
+  itemKey: z.string().min(1).max(64),
+  idempotencyKey: z.string().trim().min(8).max(128),
+});
