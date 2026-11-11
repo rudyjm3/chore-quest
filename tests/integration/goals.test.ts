@@ -168,17 +168,24 @@ describe("goals", () => {
       taskId: task.id,
       localDate: "2026-11-11",
     });
+    // Remove the pipeline's own contribution for the second completion so the insert below can only
+    // collide with the per-day streak index, not the (goalAssignmentId, completionId) unique key.
+    await db.goalContribution.deleteMany({
+      where: { goalAssignmentId: assignment.id, completionId: other.completionId! },
+    });
+    const sameDay = {
+      familyId: family.id,
+      goalAssignmentId: assignment.id,
+      completionId: other.completionId!,
+      localDate: new Date("2026-11-10T00:00:00Z"),
+    };
     await expect(
-      db.goalContribution.create({
-        data: {
-          familyId: family.id,
-          goalAssignmentId: assignment.id,
-          completionId: other.completionId!,
-          localDate: new Date("2026-11-10T00:00:00Z"),
-          countedForStreak: true,
-        },
-      }),
-    ).rejects.toThrow();
+      db.goalContribution.create({ data: { ...sameDay, countedForStreak: true } }),
+    ).rejects.toThrow(/goal_contribution_streak_day_uq|Unique constraint/);
+    // A same-day contribution that does not advance the streak is allowed.
+    await expect(
+      db.goalContribution.create({ data: { ...sameDay, countedForStreak: false } }),
+    ).resolves.toMatchObject({ countedForStreak: false });
   });
 
   it("weekly goals use household-local dates: a late-night UTC completion lands in the right week", async () => {
