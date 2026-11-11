@@ -1,0 +1,141 @@
+# Database
+
+PostgreSQL via Prisma 7 (`prisma/schema.prisma`, migrations in `prisma/migrations`). Table names are
+snake_case (`@@map`); model names are PascalCase. All ids are UUIDs (v7 for application tables,
+`gen_random_uuid()` for Better Auth tables). Timestamps are `timestamptz` in UTC; household-local
+dates are `date` columns.
+
+## Migration history
+
+| #   | Migration                                       | Contents                                                                                                                                                                                                                                                                                        |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `20261110161727_auth_families`                  | Better Auth tables (`user`, `session`, `account`, `verification`), `family`, `family_settings`, `family_member`, `child`, `child_credential`, `child_session`, `audit_log`                                                                                                                      |
+| 2   | `20261110161735_tasks_routines`                 | `task_preset`, `task`, `task_assignment`, `task_occurrence`, `routine_template`, `routine_template_step`, `routine`, `routine_step`, `routine_assignment`, `routine_run`, `routine_step_progress`                                                                                               |
+| 3   | `20261110161739_approvals_activity_completions` | `task_submission`, `parent_review`, `activity_completion`                                                                                                                                                                                                                                       |
+| 4   | `20261110161744_goals`                          | `goal`, `goal_assignment`, `goal_contribution`, `goal_completion`                                                                                                                                                                                                                               |
+| 5   | `20261110161748_rewards_achievements`           | `reward_wallet`, `reward_ledger_entry`, `reward_definition`, `reward_redemption`, `achievement_definition`, `earned_achievement`                                                                                                                                                                |
+| 6   | `20261110161753_adventures_inventory`           | `adventure`, `adventure_chapter`, `adventure_quest`, `quest_objective`, `puzzle_definition`, `item_definition`, `child_adventure_progress`, `child_chapter_progress`, `quest_progress`, `objective_progress`, `quest_contribution`, `puzzle_attempt`, `child_inventory_item`, `inventory_grant` |
+| 7   | `20261110161821_integrity_constraints`          | Hand-written CHECK constraints and partial unique indexes (below)                                                                                                                                                                                                                               |
+
+Workflow: edit the schema → `pnpm db:migrate --name <change>` (dev) → commit SQL → CI runs
+`prisma migrate deploy` and a drift check (`prisma migrate diff --from-config-datasource --to-schema`).
+`prisma db push` is not used.
+
+## Ownership boundaries
+
+- **Better Auth owns** `user`, `session`, `account`, `verification`. Regenerate with `pnpm auth:schema`.
+  Application code only adds relation fields on `User` and reads `user.id/name/email`.
+- **Application owns** everything else. Children are _not_ users.
+
+## Entity overview
+
+```mermaid
+erDiagram
+  USER ||--o{ FAMILY_MEMBER : "adult in"
+  FAMILY ||--o{ FAMILY_MEMBER : has
+  FAMILY ||--o{ CHILD : has
+  FAMILY ||--|| FAMILY_SETTINGS : has
+  CHILD ||--o| CHILD_CREDENTIAL : pin
+  CHILD ||--o{ CHILD_SESSION : sessions
+  FAMILY ||--o{ TASK : library
+  TASK_PRESET ||--o{ TASK : "copied from"
+  TASK ||--o{ TASK_ASSIGNMENT : assigned
+  CHILD ||--o{ TASK_ASSIGNMENT : to
+  TASK_ASSIGNMENT ||--o{ TASK_OCCURRENCE : "per local date"
+  TASK_OCCURRENCE ||--o| TASK_SUBMISSION : submitted
+  TASK_SUBMISSION ||--o| PARENT_REVIEW : reviewed
+  TASK_OCCURRENCE ||--o| ACTIVITY_COMPLETION : verified
+  ROUTINE ||--o{ ROUTINE_STEP : steps
+  ROUTINE_STEP }o--|| TASK : references
+  ROUTINE ||--o{ ROUTINE_ASSIGNMENT : assigned
+  ROUTINE_ASSIGNMENT ||--o{ ROUTINE_RUN : "per local date"
+  ROUTINE_RUN ||--o{ ROUTINE_STEP_PROGRESS : steps
+  ROUTINE_RUN ||--o| ACTIVITY_COMPLETION : verified
+  ACTIVITY_COMPLETION ||--o{ GOAL_CONTRIBUTION : feeds
+  ACTIVITY_COMPLETION ||--o{ REWARD_LEDGER_ENTRY : credits
+  ACTIVITY_COMPLETION ||--o{ QUEST_CONTRIBUTION : feeds
+  GOAL ||--o{ GOAL_ASSIGNMENT : per child/period
+  GOAL_ASSIGNMENT ||--o{ GOAL_CONTRIBUTION : has
+  GOAL_ASSIGNMENT ||--o| GOAL_COMPLETION : done
+  CHILD ||--o{ REWARD_WALLET : "POINTS/COINS/XP"
+  CHILD ||--o{ REWARD_LEDGER_ENTRY : history
+  ADVENTURE ||--o{ ADVENTURE_CHAPTER : chapters
+  ADVENTURE_CHAPTER ||--o{ ADVENTURE_QUEST : quests
+  ADVENTURE_QUEST ||--o{ QUEST_OBJECTIVE : objectives
+  ADVENTURE_CHAPTER ||--o{ PUZZLE_DEFINITION : puzzles
+  ADVENTURE ||--o{ ITEM_DEFINITION : items
+  CHILD ||--o{ CHILD_ADVENTURE_PROGRESS : plays
+  CHILD_ADVENTURE_PROGRESS ||--o{ CHILD_CHAPTER_PROGRESS : chapters
+  CHILD ||--o{ QUEST_PROGRESS : quests
+  QUEST_PROGRESS ||--o{ OBJECTIVE_PROGRESS : objectives
+  OBJECTIVE_PROGRESS ||--o{ QUEST_CONTRIBUTION : has
+  CHILD ||--o{ CHILD_INVENTORY_ITEM : owns
+  CHILD ||--o{ INVENTORY_GRANT : history
+```
+
+## Key tables and invariants
+
+### Identity and families
+
+- `family`: `timezone` (IANA), `weekStartsOn` (0–6, CHECK), `childLoginCode` (unique, used by child sign-in).
+- `family_member`: unique `(familyId, userId)`; `role` OWNER | GUARDIAN; `status` ACTIVE | INVITED | REMOVED.
+- `child`: minimal profile (`displayName`, optional `avatarKey`, optional `birthYear`).
+- `child_credential`: scrypt PIN hash, `failedAttempts`, `lockedUntil`.
+- `child_session`: `tokenHash` (HMAC of the cookie token, unique), `expiresAt > createdAt` (CHECK), `revokedAt`.
+- `audit_log`: append-only; `actorType` PARENT | CHILD | SYSTEM; indexed by `(familyId, createdAt)` and `(entityType, entityId)`.
+
+### Tasks and routines
+
+- `task` is the family's definition; `task_assignment` is who/when; `task_occurrence` is one concrete instance:
+  unique `(assignmentId, localDate)`, `pointsSnapshot` frozen at generation (edits never rewrite history).
+- `daysOfWeek` arrays are CHECKed to `⊆ {0..6}`; `endDate >= startDate`.
+- `routine_step` references `task` (unique `(routineId, taskId)` and `(routineId, sortOrder)`): no duplicated tasks.
+- `routine_run` unique `(assignmentId, localDate)`; `routine_step_progress` unique `(runId, stepId)`.
+- Global library: `task_preset` (unique `key`), `routine_template` + `routine_template_step`.
+
+### Approvals and activity
+
+- `task_submission` unique per `occurrenceId` (resubmission increments `attempt`); `parent_review` unique per submission, `reviewerUserId` null + `isAutomatic` for policy approvals.
+- `activity_completion` is the canonical verified event: unique `taskOccurrenceId`, unique `routineRunId`, and the CHECK
+  `activity_completion_single_source_chk` requires exactly one source matching `sourceType`. Carries denormalised
+  `taskId/taskCategory/routineId` for eligibility filters and `processingStatus` (PENDING | PROCESSED | FAILED) for the resumable pipeline.
+
+### Goals
+
+- `goal` (definition with optional filters) → `goal_assignment` unique `(goalId, childId, periodKey)`; `periodKey` is `""` for
+  one-off goals and `week:<weekStart>` for weekly goals.
+- `goal_contribution` unique `(goalAssignmentId, completionId)`; partial unique index `goal_contribution_streak_day_uq` on
+  `(goalAssignmentId, localDate) WHERE countedForStreak` guarantees at most one streak advance per day.
+- `goal_completion` unique per assignment; links to the reward ledger.
+
+### Rewards
+
+- `reward_wallet` unique `(childId, currency)`, CHECK `balance >= 0`.
+- `reward_ledger_entry`: unique `sourceKey` (idempotency), unique `(sourceType, sourceId, currency)`, CHECK `amount <> 0`,
+  CHECK `balanceAfter >= 0`. Always written in the same transaction as the wallet update.
+- `reward_definition` / `reward_redemption` (debit ledger entry linked once approved).
+- `achievement_definition` (unique `key`, `adventureKey` null = platform-wide) / `earned_achievement` unique `(childId, achievementId)`.
+
+### Adventure and inventory
+
+- Definitions: `adventure` (unique `key`), `adventure_chapter` unique `(adventureId, key)` and `(adventureId, sortOrder)`,
+  `adventure_quest` unique `(chapterId, key)`, `quest_objective` unique `(questId, key)`, `puzzle_definition` unique `(chapterId, key)`,
+  `item_definition` unique `key`. Config JSON columns are validated by `src/game/schemas`.
+- Progress: `child_adventure_progress` unique `(childId, adventureId)`; `child_chapter_progress` unique `(childId, chapterId)` with
+  `rewardClaimedAt`; `quest_progress` unique `(childId, questId)`; `objective_progress` unique `(questProgressId, objectiveId)` with
+  CHECK `0 <= currentCount <= targetCount`; `quest_contribution` unique `(objectiveProgressId, completionId)`.
+- `puzzle_attempt`: partial unique index `puzzle_attempt_completed_uq` on `(childId, puzzleId) WHERE status = 'COMPLETED'`.
+- `child_inventory_item` unique `(childId, itemId)`, CHECK `quantity >= 0`; `inventory_grant` unique `sourceKey`, CHECK `quantity <> 0`.
+
+## Transactions and locking
+
+- Approval: `SELECT … FOR UPDATE` on the occurrence/run row, then status re-check → idempotent.
+- Pipeline and all wallet/inventory/progress writes: `lockChildRow(tx, childId)` serializes per child.
+- Inside PostgreSQL interactive transactions a failed statement aborts the transaction, so services check-then-insert
+  under the lock (or use `createMany({ skipDuplicates })`) instead of catching unique violations.
+
+## Retention and deletion
+
+Deleting a `family` cascades to every household table; deleting a `user` cascades to their auth rows and
+memberships (families they created are kept via `createdById` restrict — reassign ownership first).
+`family_settings.historyRetentionDays` is reserved for a retention job (not yet implemented).

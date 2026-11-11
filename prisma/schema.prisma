@@ -1,0 +1,1362 @@
+// ---------------------------------------------------------------------------
+// Chore Quests — Prisma schema
+//
+// Sections (each section was introduced by its own migration, in this order):
+//   1. Authentication, users, families, children, audit
+//   2. Tasks and routines
+//   3. Approvals and activity completions
+//   4. Goals
+//   5. Rewards and achievements
+//   6. Adventures and inventory
+//   7. Additional integrity constraints (SQL-only, see migration 0007)
+//
+// Conventions
+//   - Primary keys are UUIDv7 (time-ordered, index friendly).
+//   - All timestamps are stored in UTC (`timestamptz`).
+//   - Household-local calendar dates use `@db.Date` and are computed from the
+//     family's IANA timezone (see src/lib/utils/dates.ts).
+//   - Every household-scoped row carries `familyId` so authorization checks and
+//     cross-family isolation can be enforced in one place.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ===========================================================================
+// SECTION 1 — Authentication (Better Auth), families, children, audit
+// ===========================================================================
+// The four models below (User, Session, Account, Verification) are OWNED by
+// Better Auth and were generated with `pnpm auth:schema`. Only add fields that
+// Better Auth documents as safe; application data about a person belongs in
+// FamilyMember / Child instead.
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  familyMemberships FamilyMember[]
+  createdFamilies   Family[]            @relation("FamilyCreatedBy")
+  auditLogs         AuditLog[]
+  childSessions     ChildSession[]      @relation("ChildSessionIssuedBy")
+  createdTasks      Task[]              @relation("TaskCreatedBy") // @s2
+  parentReviews     ParentReview[] // @s3
+  createdGoals      Goal[]              @relation("GoalCreatedBy") // @s4
+  ledgerEntries     RewardLedgerEntry[] // @s5
+  rewardResolutions RewardRedemption[]  @relation("RedemptionResolvedBy") // @s5
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  accountId             String
+  providerId            String
+  userId                String    @db.Uuid
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// --- Families -----------------------------------------------------------------
+
+/// Role of an adult within a household. Children are never members; they are
+/// Child profiles owned by the family.
+enum FamilyRole {
+  OWNER
+  GUARDIAN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  REMOVED
+}
+
+/// Default approval behaviour for new assignments in a family.
+enum ApprovalPolicy {
+  PARENT_REVIEW
+  AUTO_APPROVE
+}
+
+model Family {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  name           String
+  /// IANA timezone, e.g. "America/New_York". Drives all local-date logic.
+  timezone       String   @default("UTC")
+  /// 0 = Sunday … 6 = Saturday. Used for weekly goals and routine schedules.
+  weekStartsOn   Int      @default(1)
+  /// Short code children type on the child sign-in screen to find their family.
+  childLoginCode String   @unique
+  createdById    String   @db.Uuid
+  createdBy      User     @relation("FamilyCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  settings            FamilySettings?
+  members             FamilyMember[]
+  children            Child[]
+  childSessions       ChildSession[]
+  auditLogs           AuditLog[]
+  tasks               Task[] // @s2
+  taskAssignments     TaskAssignment[] // @s2
+  taskOccurrences     TaskOccurrence[] // @s2
+  routines            Routine[] // @s2
+  routineAssignments  RoutineAssignment[] // @s2
+  routineRuns         RoutineRun[] // @s2
+  taskSubmissions     TaskSubmission[] // @s3
+  parentReviews       ParentReview[] // @s3
+  activityCompletions ActivityCompletion[] // @s3
+  goals               Goal[] // @s4
+  goalAssignments     GoalAssignment[] // @s4
+  goalContributions   GoalContribution[] // @s4
+  goalCompletions     GoalCompletion[] // @s4
+  rewardWallets       RewardWallet[] // @s5
+  ledgerEntries       RewardLedgerEntry[] // @s5
+  rewardDefinitions   RewardDefinition[] // @s5
+  rewardRedemptions   RewardRedemption[] // @s5
+  earnedAchievements  EarnedAchievement[] // @s5
+  adventureProgress   ChildAdventureProgress[] // @s6
+  chapterProgress     ChildChapterProgress[] // @s6
+  questProgress       QuestProgress[] // @s6
+  questContributions  QuestContribution[] // @s6
+  puzzleAttempts      PuzzleAttempt[] // @s6
+  inventoryItems      ChildInventoryItem[] // @s6
+  inventoryGrants     InventoryGrant[] // @s6
+
+  @@map("family")
+}
+
+model FamilySettings {
+  familyId              String         @id @db.Uuid
+  family                Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  defaultApprovalPolicy ApprovalPolicy @default(PARENT_REVIEW)
+  /// Whether children may sign in on their own with the family code + PIN
+  /// (vs. only from a device where a parent is signed in).
+  allowChildSelfSignIn  Boolean        @default(true)
+  /// Minutes a child session stays valid without activity.
+  childSessionMinutes   Int            @default(720)
+  /// Days of activity history retained for children (null = keep forever).
+  historyRetentionDays  Int?
+  updatedAt             DateTime       @updatedAt
+
+  @@map("family_settings")
+}
+
+model FamilyMember {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  familyId  String           @db.Uuid
+  family    Family           @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  userId    String           @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      FamilyRole       @default(GUARDIAN)
+  status    MembershipStatus @default(ACTIVE)
+  joinedAt  DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([familyId, userId])
+  @@index([userId])
+  @@map("family_member")
+}
+
+// --- Children -----------------------------------------------------------------
+
+enum ChildStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+/// A child profile. Intentionally minimal: no email, no surname, no birthday.
+/// `birthYear` is optional and only used for age-appropriate content.
+model Child {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  familyId    String      @db.Uuid
+  family      Family      @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  displayName String
+  avatarKey   String?
+  birthYear   Int?
+  status      ChildStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  credential          ChildCredential?
+  sessions            ChildSession[]
+  auditLogs           AuditLog[]
+  taskAssignments     TaskAssignment[] // @s2
+  taskOccurrences     TaskOccurrence[] // @s2
+  routineAssignments  RoutineAssignment[] // @s2
+  routineRuns         RoutineRun[] // @s2
+  taskSubmissions     TaskSubmission[] // @s3
+  activityCompletions ActivityCompletion[] // @s3
+  goalAssignments     GoalAssignment[] // @s4
+  goalCompletions     GoalCompletion[] // @s4
+  rewardWallets       RewardWallet[] // @s5
+  ledgerEntries       RewardLedgerEntry[] // @s5
+  rewardRedemptions   RewardRedemption[] // @s5
+  earnedAchievements  EarnedAchievement[] // @s5
+  adventureProgress   ChildAdventureProgress[] // @s6
+  chapterProgress     ChildChapterProgress[] // @s6
+  questProgress       QuestProgress[] // @s6
+  puzzleAttempts      PuzzleAttempt[] // @s6
+  inventoryItems      ChildInventoryItem[] // @s6
+  inventoryGrants     InventoryGrant[] // @s6
+
+  @@index([familyId, status])
+  @@map("child")
+}
+
+/// Family-managed child credential (a short PIN, hashed). Managed by parents.
+model ChildCredential {
+  childId        String    @id @db.Uuid
+  child          Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  pinHash        String
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@map("child_credential")
+}
+
+/// Child sessions are separate from Better Auth sessions on purpose.
+model ChildSession {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  /// SHA-256 hash of the opaque cookie token; the raw token is never stored.
+  tokenHash      String    @unique
+  familyId       String    @db.Uuid
+  family         Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId        String    @db.Uuid
+  child          Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  /// Parent who started the session from their own device, if any.
+  issuedByUserId String?   @db.Uuid
+  issuedBy       User?     @relation("ChildSessionIssuedBy", fields: [issuedByUserId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+  lastSeenAt     DateTime  @default(now())
+  revokedAt      DateTime?
+
+  @@index([childId, expiresAt])
+  @@map("child_session")
+}
+
+// --- Audit --------------------------------------------------------------------
+
+enum ActorType {
+  PARENT
+  CHILD
+  SYSTEM
+}
+
+/// Append-only history of sensitive actions (approvals, reward adjustments,
+/// membership changes, credential resets, deletions).
+model AuditLog {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  familyId     String    @db.Uuid
+  family       Family    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  actorType    ActorType
+  actorUserId  String?   @db.Uuid
+  actorUser    User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorChildId String?   @db.Uuid
+  actorChild   Child?    @relation(fields: [actorChildId], references: [id], onDelete: SetNull)
+  /// Dotted action key, e.g. "approval.approve", "reward.adjust".
+  action       String
+  entityType   String
+  entityId     String
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+
+  @@index([familyId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}
+
+// ===========================================================================
+// SECTION 2 — Tasks and routines
+// ===========================================================================
+
+enum TaskCategory {
+  CHORE
+  HYGIENE
+  SCHOOL
+  PET_CARE
+  HELPING
+  OTHER
+}
+
+/// Global, seeded task library. Families copy a preset into their own Task.
+model TaskPreset {
+  id            String       @id @default(uuid(7)) @db.Uuid
+  key           String       @unique
+  title         String
+  description   String?
+  category      TaskCategory @default(CHORE)
+  defaultPoints Int          @default(5)
+  iconKey       String?
+  sortOrder     Int          @default(0)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  tasks                Task[]
+  routineTemplateSteps RoutineTemplateStep[]
+
+  @@map("task_preset")
+}
+
+/// A family's task definition (the "what"). Assignments decide "who/when".
+model Task {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  familyId       String         @db.Uuid
+  family         Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  presetId       String?        @db.Uuid
+  preset         TaskPreset?    @relation(fields: [presetId], references: [id], onDelete: SetNull)
+  title          String
+  description    String?
+  category       TaskCategory   @default(CHORE)
+  iconKey        String?
+  points         Int            @default(5)
+  approvalPolicy ApprovalPolicy @default(PARENT_REVIEW)
+  isArchived     Boolean        @default(false)
+  createdById    String?        @db.Uuid
+  createdBy      User?          @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  assignments  TaskAssignment[]
+  routineSteps RoutineStep[]
+
+  @@index([familyId, isArchived])
+  @@map("task")
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum RecurrenceFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  SPECIFIC_DAYS
+}
+
+/// A task assigned to one child with a schedule. Each scheduled day becomes a
+/// TaskOccurrence (generated lazily; unique per assignment + local date).
+model TaskAssignment {
+  id                     String              @id @default(uuid(7)) @db.Uuid
+  familyId               String              @db.Uuid
+  family                 Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  taskId                 String              @db.Uuid
+  task                   Task                @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  childId                String              @db.Uuid
+  child                  Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  status                 AssignmentStatus    @default(ACTIVE)
+  frequency              RecurrenceFrequency @default(DAILY)
+  /// For SPECIFIC_DAYS: 0 = Sunday … 6 = Saturday. For WEEKLY: a single day.
+  daysOfWeek             Int[]               @default([])
+  /// Household-local calendar dates.
+  startDate              DateTime            @db.Date
+  endDate                DateTime?           @db.Date
+  /// Optional local due time "HH:mm".
+  dueTime                String?
+  pointsOverride         Int?
+  approvalPolicyOverride ApprovalPolicy?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  occurrences TaskOccurrence[]
+
+  @@index([familyId, childId, status])
+  @@index([taskId])
+  @@map("task_assignment")
+}
+
+enum OccurrenceStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+  MISSED
+  SKIPPED
+}
+
+/// One concrete instance of an assignment on one household-local date.
+model TaskOccurrence {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  familyId       String           @db.Uuid
+  family         Family           @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  assignmentId   String           @db.Uuid
+  assignment     TaskAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  childId        String           @db.Uuid
+  child          Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  localDate      DateTime         @db.Date
+  dueAt          DateTime?
+  /// Points frozen when the occurrence is generated so later edits to the task
+  /// or assignment do not rewrite history.
+  pointsSnapshot Int
+  status         OccurrenceStatus @default(PENDING)
+  submittedAt    DateTime?
+  reviewedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  submission TaskSubmission? // @s3
+  completion ActivityCompletion? // @s3
+
+  @@unique([assignmentId, localDate])
+  @@index([familyId, childId, localDate])
+  @@index([familyId, status])
+  @@map("task_occurrence")
+}
+
+// --- Routines -----------------------------------------------------------------
+
+/// Global, seeded routine templates built from task presets.
+model RoutineTemplate {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  key         String   @unique
+  name        String
+  description String?
+  iconKey     String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps RoutineTemplateStep[]
+
+  @@map("routine_template")
+}
+
+model RoutineTemplateStep {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  templateId String          @db.Uuid
+  template   RoutineTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  presetId   String          @db.Uuid
+  preset     TaskPreset      @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  sortOrder  Int
+
+  @@unique([templateId, sortOrder])
+  @@unique([templateId, presetId])
+  @@map("routine_template_step")
+}
+
+/// A family's routine: an ordered list of steps referencing shared Tasks.
+model Routine {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  familyId    String   @db.Uuid
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  iconKey     String?
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  steps       RoutineStep[]
+  assignments RoutineAssignment[]
+
+  @@index([familyId, isArchived])
+  @@map("routine")
+}
+
+model RoutineStep {
+  id         String  @id @default(uuid(7)) @db.Uuid
+  routineId  String  @db.Uuid
+  routine    Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  taskId     String  @db.Uuid
+  task       Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  sortOrder  Int
+  isOptional Boolean @default(false)
+
+  stepProgress RoutineStepProgress[]
+
+  @@unique([routineId, sortOrder])
+  @@unique([routineId, taskId])
+  @@map("routine_step")
+}
+
+model RoutineAssignment {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  familyId       String              @db.Uuid
+  family         Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  routineId      String              @db.Uuid
+  routine        Routine             @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  childId        String              @db.Uuid
+  child          Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  status         AssignmentStatus    @default(ACTIVE)
+  frequency      RecurrenceFrequency @default(DAILY)
+  daysOfWeek     Int[]               @default([])
+  startDate      DateTime            @db.Date
+  endDate        DateTime?           @db.Date
+  /// Optional local completion window "HH:mm" (policy enforcement is a later milestone).
+  windowStart    String?
+  windowEnd      String?
+  /// Bonus parent points for completing the whole routine (step tasks keep their own points).
+  bonusPoints    Int                 @default(0)
+  approvalPolicy ApprovalPolicy      @default(PARENT_REVIEW)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  runs RoutineRun[]
+
+  @@unique([routineId, childId])
+  @@index([familyId, childId, status])
+  @@map("routine_assignment")
+}
+
+enum RoutineRunStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+  MISSED
+}
+
+/// One instance of a routine for one child on one household-local date.
+model RoutineRun {
+  id                  String            @id @default(uuid(7)) @db.Uuid
+  familyId            String            @db.Uuid
+  family              Family            @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  assignmentId        String            @db.Uuid
+  assignment          RoutineAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  childId             String            @db.Uuid
+  child               Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  localDate           DateTime          @db.Date
+  status              RoutineRunStatus  @default(PENDING)
+  bonusPointsSnapshot Int               @default(0)
+  startedAt           DateTime?
+  submittedAt         DateTime?
+  reviewedAt          DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  stepProgress RoutineStepProgress[]
+  completion   ActivityCompletion? // @s3
+
+  @@unique([assignmentId, localDate])
+  @@index([familyId, childId, localDate])
+  @@map("routine_run")
+}
+
+enum StepStatus {
+  PENDING
+  DONE
+  SKIPPED
+}
+
+model RoutineStepProgress {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  runId       String      @db.Uuid
+  run         RoutineRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepId      String      @db.Uuid
+  step        RoutineStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  status      StepStatus  @default(PENDING)
+  completedAt DateTime?
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([runId, stepId])
+  @@map("routine_step_progress")
+}
+
+// ===========================================================================
+// SECTION 3 — Approvals and activity completions
+// ===========================================================================
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+/// A child's claim that an occurrence is done. One per occurrence; a rejected
+/// submission is reopened in place rather than duplicated.
+model TaskSubmission {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  familyId     String           @db.Uuid
+  family       Family           @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  occurrenceId String           @unique @db.Uuid
+  occurrence   TaskOccurrence   @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  childId      String           @db.Uuid
+  child        Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  status       SubmissionStatus @default(PENDING)
+  note         String?
+  submittedAt  DateTime         @default(now())
+  /// Incremented each time the child re-submits after a rejection.
+  attempt      Int              @default(1)
+  updatedAt    DateTime         @updatedAt
+
+  review ParentReview?
+
+  @@index([familyId, status])
+  @@map("task_submission")
+}
+
+enum ReviewDecision {
+  APPROVED
+  REJECTED
+}
+
+model ParentReview {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  familyId       String         @db.Uuid
+  family         Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  submissionId   String         @unique @db.Uuid
+  submission     TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  /// Null when the decision came from an AUTO_APPROVE policy.
+  reviewerUserId String?        @db.Uuid
+  reviewer       User?          @relation(fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  decision       ReviewDecision
+  isAutomatic    Boolean        @default(false)
+  note           String?
+  reviewedAt     DateTime       @default(now())
+
+  @@map("parent_review")
+}
+
+enum ActivitySourceType {
+  TASK_OCCURRENCE
+  ROUTINE_RUN
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+/// The canonical "verified completion" event. Exactly one source reference is
+/// set (enforced by a CHECK constraint in migration 0007). Goals, rewards and
+/// adventure quests all derive from this record and never from UI state.
+model ActivityCompletion {
+  id                 String             @id @default(uuid(7)) @db.Uuid
+  familyId           String             @db.Uuid
+  family             Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId            String             @db.Uuid
+  child              Child              @relation(fields: [childId], references: [id], onDelete: Cascade)
+  sourceType         ActivitySourceType
+  taskOccurrenceId   String?            @unique @db.Uuid
+  taskOccurrence     TaskOccurrence?    @relation(fields: [taskOccurrenceId], references: [id], onDelete: Restrict)
+  routineRunId       String?            @unique @db.Uuid
+  routineRun         RoutineRun?        @relation(fields: [routineRunId], references: [id], onDelete: Restrict)
+  /// Household-local date the activity counts towards (streaks, weekly goals).
+  localDate          DateTime           @db.Date
+  completedAt        DateTime
+  approvedAt         DateTime           @default(now())
+  approvedByUserId   String?            @db.Uuid
+  pointsAwarded      Int                @default(0)
+  /// Denormalised snapshot for eligibility filters (task id / category / routine id).
+  taskId             String?            @db.Uuid
+  taskCategory       TaskCategory?
+  routineId          String?            @db.Uuid
+  /// Downstream pipeline state (goals, rewards, quests). Safe to re-run.
+  processingStatus   ProcessingStatus   @default(PENDING)
+  processingAttempts Int                @default(0)
+  processedAt        DateTime?
+  lastError          String?
+  createdAt          DateTime           @default(now())
+
+  goalContributions  GoalContribution[] // @s4
+  ledgerEntries      RewardLedgerEntry[] // @s5
+  earnedAchievements EarnedAchievement[] // @s5
+  questContributions QuestContribution[] // @s6
+
+  @@index([familyId, childId, localDate])
+  @@index([processingStatus])
+  @@map("activity_completion")
+}
+
+// ===========================================================================
+// SECTION 4 — Goals
+// ===========================================================================
+
+enum GoalType {
+  TOTAL_COUNT
+  WEEKLY_COUNT
+  CONSECUTIVE_DAYS
+  ROUTINE_CONSISTENCY
+  CUSTOM_MILESTONE
+}
+
+enum GoalRecurrence {
+  NONE
+  WEEKLY
+}
+
+enum GoalAssignmentStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  ARCHIVED
+}
+
+/// Parent-defined goal definition. Eligibility filters are optional: a goal
+/// with no filter counts every verified completion.
+model Goal {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  familyId          String              @db.Uuid
+  family            Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  title             String
+  description       String?
+  type              GoalType
+  targetCount       Int
+  recurrence        GoalRecurrence      @default(NONE)
+  /// Eligibility filters (any combination; all must match when set).
+  filterTaskId      String?             @db.Uuid
+  filterRoutineId   String?             @db.Uuid
+  filterCategory    TaskCategory?
+  filterSourceType  ActivitySourceType?
+  rewardPoints      Int                 @default(0)
+  rewardDescription String?
+  isArchived        Boolean             @default(false)
+  createdById       String?             @db.Uuid
+  createdBy         User?               @relation("GoalCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  assignments GoalAssignment[]
+
+  @@index([familyId, isArchived])
+  @@map("goal")
+}
+
+/// A goal tracked for one child over one period. `periodKey` is "" for
+/// non-recurring goals and e.g. "2026-W45" for weekly recurrences.
+model GoalAssignment {
+  id                   String               @id @default(uuid(7)) @db.Uuid
+  familyId             String               @db.Uuid
+  family               Family               @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  goalId               String               @db.Uuid
+  goal                 Goal                 @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  childId              String               @db.Uuid
+  child                Child                @relation(fields: [childId], references: [id], onDelete: Cascade)
+  periodKey            String               @default("")
+  startDate            DateTime             @db.Date
+  endDate              DateTime?            @db.Date
+  status               GoalAssignmentStatus @default(ACTIVE)
+  /// Cached counters; the source of truth is GoalContribution rows.
+  progressCount        Int                  @default(0)
+  currentStreak        Int                  @default(0)
+  bestStreak           Int                  @default(0)
+  lastContributionDate DateTime?            @db.Date
+  completedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  contributions GoalContribution[]
+  completion    GoalCompletion?
+
+  @@unique([goalId, childId, periodKey])
+  @@index([familyId, childId, status])
+  @@map("goal_assignment")
+}
+
+/// Links one verified completion to one goal assignment (at most once).
+model GoalContribution {
+  id               String             @id @default(uuid(7)) @db.Uuid
+  familyId         String             @db.Uuid
+  family           Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  goalAssignmentId String             @db.Uuid
+  goalAssignment   GoalAssignment     @relation(fields: [goalAssignmentId], references: [id], onDelete: Cascade)
+  completionId     String             @db.Uuid
+  completion       ActivityCompletion @relation(fields: [completionId], references: [id], onDelete: Cascade)
+  localDate        DateTime           @db.Date
+  /// True for the single contribution per day that advanced a streak
+  /// (partial unique index in migration 0007).
+  countedForStreak Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+
+  @@unique([goalAssignmentId, completionId])
+  @@index([goalAssignmentId, localDate])
+  @@map("goal_contribution")
+}
+
+model GoalCompletion {
+  id               String         @id @default(uuid(7)) @db.Uuid
+  familyId         String         @db.Uuid
+  family           Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  goalAssignmentId String         @unique @db.Uuid
+  goalAssignment   GoalAssignment @relation(fields: [goalAssignmentId], references: [id], onDelete: Cascade)
+  childId          String         @db.Uuid
+  child            Child          @relation(fields: [childId], references: [id], onDelete: Cascade)
+  completedAt      DateTime       @default(now())
+  pointsAwarded    Int            @default(0)
+
+  ledgerEntries RewardLedgerEntry[] // @s5
+
+  @@index([familyId, childId])
+  @@map("goal_completion")
+}
+
+// ===========================================================================
+// SECTION 5 — Rewards and achievements
+// ===========================================================================
+
+/// POINTS = parent-controlled points; COINS = in-game currency; XP = experience.
+enum Currency {
+  POINTS
+  COINS
+  XP
+}
+
+enum RewardSourceType {
+  ACTIVITY_COMPLETION
+  GOAL_COMPLETION
+  QUEST_REWARD
+  CHAPTER_REWARD
+  ACHIEVEMENT
+  SIDE_MISSION
+  REDEMPTION
+  PURCHASE
+  PARENT_ADJUSTMENT
+}
+
+model RewardWallet {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  familyId  String   @db.Uuid
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId   String   @db.Uuid
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  currency  Currency
+  /// Cached balance; CHECK (balance >= 0) in migration 0007. Always written
+  /// in the same transaction as the ledger entry that changed it.
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([childId, currency])
+  @@map("reward_wallet")
+}
+
+/// Append-only ledger. `sourceKey` makes every credit/debit idempotent.
+model RewardLedgerEntry {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  familyId         String              @db.Uuid
+  family           Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId          String              @db.Uuid
+  child            Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  currency         Currency
+  /// Positive = credit, negative = debit. Never zero (CHECK in migration 0007).
+  amount           Int
+  balanceAfter     Int
+  sourceType       RewardSourceType
+  /// Id of the source record (completion, goal completion, redemption, ...).
+  sourceId         String
+  /// Globally unique idempotency key, e.g. "activity:<id>:POINTS".
+  sourceKey        String              @unique
+  description      String?
+  completionId     String?             @db.Uuid
+  completion       ActivityCompletion? @relation(fields: [completionId], references: [id], onDelete: SetNull)
+  goalCompletionId String?             @db.Uuid
+  goalCompletion   GoalCompletion?     @relation(fields: [goalCompletionId], references: [id], onDelete: SetNull)
+  createdByUserId  String?             @db.Uuid
+  createdBy        User?               @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime            @default(now())
+
+  redemption RewardRedemption?
+
+  @@unique([sourceType, sourceId, currency])
+  @@index([familyId, childId, createdAt])
+  @@map("reward_ledger_entry")
+}
+
+/// Parent-defined reward that children can redeem with POINTS.
+model RewardDefinition {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  familyId    String   @db.Uuid
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  costPoints  Int
+  iconKey     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions RewardRedemption[]
+
+  @@index([familyId, isActive])
+  @@map("reward_definition")
+}
+
+enum RedemptionStatus {
+  REQUESTED
+  APPROVED
+  FULFILLED
+  DENIED
+  CANCELLED
+}
+
+model RewardRedemption {
+  id                 String             @id @default(uuid(7)) @db.Uuid
+  familyId           String             @db.Uuid
+  family             Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId            String             @db.Uuid
+  child              Child              @relation(fields: [childId], references: [id], onDelete: Cascade)
+  rewardDefinitionId String             @db.Uuid
+  rewardDefinition   RewardDefinition   @relation(fields: [rewardDefinitionId], references: [id], onDelete: Restrict)
+  costPoints         Int
+  status             RedemptionStatus   @default(REQUESTED)
+  requestedAt        DateTime           @default(now())
+  resolvedAt         DateTime?
+  resolvedByUserId   String?            @db.Uuid
+  resolvedBy         User?              @relation("RedemptionResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  /// The debit ledger entry, written when the redemption is approved.
+  ledgerEntryId      String?            @unique @db.Uuid
+  ledgerEntry        RewardLedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: SetNull)
+
+  @@index([familyId, status])
+  @@map("reward_redemption")
+}
+
+/// Global achievement catalogue (seeded). `adventureKey` is null for
+/// platform-wide achievements.
+model AchievementDefinition {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  key          String   @unique
+  adventureKey String?
+  title        String
+  description  String
+  iconKey      String?
+  /// Declarative criteria evaluated by the achievement service.
+  criteria     Json
+  rewardCoins  Int      @default(0)
+  rewardXp     Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  earned EarnedAchievement[]
+
+  @@map("achievement_definition")
+}
+
+model EarnedAchievement {
+  id            String                @id @default(uuid(7)) @db.Uuid
+  familyId      String                @db.Uuid
+  family        Family                @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId       String                @db.Uuid
+  child         Child                 @relation(fields: [childId], references: [id], onDelete: Cascade)
+  achievementId String                @db.Uuid
+  achievement   AchievementDefinition @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  completionId  String?               @db.Uuid
+  completion    ActivityCompletion?   @relation(fields: [completionId], references: [id], onDelete: SetNull)
+  earnedAt      DateTime              @default(now())
+
+  @@unique([childId, achievementId])
+  @@map("earned_achievement")
+}
+
+// ===========================================================================
+// SECTION 6 — Adventures and inventory
+// ===========================================================================
+
+/// A playable theme ("pirate", "space", ...). Config is validated by
+/// src/game/schemas at seed time and read by the engine at runtime.
+model Adventure {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  key         String   @unique
+  title       String
+  description String?
+  themeKey    String
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  config      Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chapters AdventureChapter[]
+  items    ItemDefinition[]
+  progress ChildAdventureProgress[]
+
+  @@map("adventure")
+}
+
+enum ChapterDefinitionStatus {
+  PLAYABLE
+  PLACEHOLDER
+}
+
+model AdventureChapter {
+  id           String                  @id @default(uuid(7)) @db.Uuid
+  adventureId  String                  @db.Uuid
+  adventure    Adventure               @relation(fields: [adventureId], references: [id], onDelete: Cascade)
+  key          String
+  sortOrder    Int
+  title        String
+  subtitle     String?
+  locationName String
+  description  String?
+  status       ChapterDefinitionStatus @default(PLACEHOLDER)
+  /// Chapter configuration (unlock requirements, completion rewards, locations).
+  config       Json
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  quests   AdventureQuest[]
+  puzzles  PuzzleDefinition[]
+  progress ChildChapterProgress[]
+
+  @@unique([adventureId, key])
+  @@unique([adventureId, sortOrder])
+  @@map("adventure_chapter")
+}
+
+enum QuestKind {
+  MAIN
+  SIDE
+}
+
+model AdventureQuest {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  chapterId   String           @db.Uuid
+  chapter     AdventureChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  key         String
+  kind        QuestKind        @default(MAIN)
+  sortOrder   Int
+  title       String
+  description String?
+  rewardCoins Int              @default(0)
+  rewardXp    Int              @default(0)
+  /// Item rewards etc: [{ itemKey, quantity }]
+  config      Json
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  objectives QuestObjective[]
+  progress   QuestProgress[]
+
+  @@unique([chapterId, key])
+  @@map("adventure_quest")
+}
+
+enum ObjectiveType {
+  APPROVED_ACTIVITIES
+  COMPLETE_ROUTINES
+  COMPLETE_PUZZLE
+  COLLECT_ITEMS
+  VISIT_LOCATION
+  CUSTOM
+}
+
+model QuestObjective {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  questId     String         @db.Uuid
+  quest       AdventureQuest @relation(fields: [questId], references: [id], onDelete: Cascade)
+  key         String
+  type        ObjectiveType
+  sortOrder   Int
+  title       String
+  targetCount Int            @default(1)
+  /// Eligibility + per-progress item grant, e.g. { "grantItemKey": "supply-crate" }.
+  config      Json
+
+  progress ObjectiveProgress[]
+
+  @@unique([questId, key])
+  @@map("quest_objective")
+}
+
+model PuzzleDefinition {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  chapterId String           @db.Uuid
+  chapter   AdventureChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  key       String
+  title     String
+  /// Puzzle type key registered in src/game/puzzles.
+  type      String
+  config    Json
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  attempts PuzzleAttempt[]
+
+  @@unique([chapterId, key])
+  @@map("puzzle_definition")
+}
+
+enum ItemType {
+  RESOURCE
+  COLLECTIBLE
+  COSMETIC
+  SHIP
+  SHIP_UPGRADE
+  CONSUMABLE
+}
+
+enum ItemRarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+/// Catalogue of everything a child can own: resources (supply crates, compass
+/// feathers), collectibles (map fragments), ships, upgrades, cosmetics.
+model ItemDefinition {
+  id          String     @id @default(uuid(7)) @db.Uuid
+  adventureId String?    @db.Uuid
+  adventure   Adventure? @relation(fields: [adventureId], references: [id], onDelete: Cascade)
+  key         String     @unique
+  name        String
+  description String?
+  type        ItemType
+  rarity      ItemRarity @default(COMMON)
+  iconKey     String?
+  /// Max quantity a child can hold (null = unlimited).
+  maxQuantity Int?
+  /// Type-specific config (ship tier, upgrade requirements, cosmetic slot...).
+  config      Json
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  inventory ChildInventoryItem[]
+  grants    InventoryGrant[]
+
+  @@index([adventureId, type])
+  @@map("item_definition")
+}
+
+enum AdventureProgressStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+model ChildAdventureProgress {
+  id               String                  @id @default(uuid(7)) @db.Uuid
+  familyId         String                  @db.Uuid
+  family           Family                  @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId          String                  @db.Uuid
+  child            Child                   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  adventureId      String                  @db.Uuid
+  adventure        Adventure               @relation(fields: [adventureId], references: [id], onDelete: Cascade)
+  currentChapterId String?                 @db.Uuid
+  status           AdventureProgressStatus @default(ACTIVE)
+  /// Small persisted game state (selected ship, cosmetics, flags). Never
+  /// authoritative for rewards.
+  state            Json                    @default("{}")
+  startedAt        DateTime                @default(now())
+  completedAt      DateTime?
+  updatedAt        DateTime                @updatedAt
+
+  chapters ChildChapterProgress[]
+
+  @@unique([childId, adventureId])
+  @@map("child_adventure_progress")
+}
+
+enum ChapterProgressStatus {
+  LOCKED
+  UNLOCKED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model ChildChapterProgress {
+  id                  String                 @id @default(uuid(7)) @db.Uuid
+  familyId            String                 @db.Uuid
+  family              Family                 @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId             String                 @db.Uuid
+  child               Child                  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  adventureProgressId String                 @db.Uuid
+  adventureProgress   ChildAdventureProgress @relation(fields: [adventureProgressId], references: [id], onDelete: Cascade)
+  chapterId           String                 @db.Uuid
+  chapter             AdventureChapter       @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  status              ChapterProgressStatus  @default(LOCKED)
+  unlockedAt          DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  /// Set exactly once when the chapter completion reward is claimed.
+  rewardClaimedAt     DateTime?
+  updatedAt           DateTime               @updatedAt
+
+  @@unique([childId, chapterId])
+  @@map("child_chapter_progress")
+}
+
+enum QuestProgressStatus {
+  LOCKED
+  ACTIVE
+  COMPLETED
+  CLAIMED
+}
+
+model QuestProgress {
+  id          String              @id @default(uuid(7)) @db.Uuid
+  familyId    String              @db.Uuid
+  family      Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId     String              @db.Uuid
+  child       Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  questId     String              @db.Uuid
+  quest       AdventureQuest      @relation(fields: [questId], references: [id], onDelete: Cascade)
+  status      QuestProgressStatus @default(LOCKED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  claimedAt   DateTime?
+  updatedAt   DateTime            @updatedAt
+
+  objectives ObjectiveProgress[]
+
+  @@unique([childId, questId])
+  @@index([familyId, childId, status])
+  @@map("quest_progress")
+}
+
+model ObjectiveProgress {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  questProgressId String         @db.Uuid
+  questProgress   QuestProgress  @relation(fields: [questProgressId], references: [id], onDelete: Cascade)
+  objectiveId     String         @db.Uuid
+  objective       QuestObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  currentCount    Int            @default(0)
+  targetCount     Int
+  completedAt     DateTime?
+  updatedAt       DateTime       @updatedAt
+
+  contributions QuestContribution[]
+
+  @@unique([questProgressId, objectiveId])
+  @@map("objective_progress")
+}
+
+/// Links one verified completion to one objective (at most once).
+model QuestContribution {
+  id                  String             @id @default(uuid(7)) @db.Uuid
+  familyId            String             @db.Uuid
+  family              Family             @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  objectiveProgressId String             @db.Uuid
+  objectiveProgress   ObjectiveProgress  @relation(fields: [objectiveProgressId], references: [id], onDelete: Cascade)
+  completionId        String             @db.Uuid
+  completion          ActivityCompletion @relation(fields: [completionId], references: [id], onDelete: Cascade)
+  amount              Int                @default(1)
+  createdAt           DateTime           @default(now())
+
+  @@unique([objectiveProgressId, completionId])
+  @@map("quest_contribution")
+}
+
+enum PuzzleAttemptStatus {
+  STARTED
+  COMPLETED
+  FAILED
+}
+
+model PuzzleAttempt {
+  id          String              @id @default(uuid(7)) @db.Uuid
+  familyId    String              @db.Uuid
+  family      Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId     String              @db.Uuid
+  child       Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  puzzleId    String              @db.Uuid
+  puzzle      PuzzleDefinition    @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  status      PuzzleAttemptStatus @default(STARTED)
+  attemptData Json?
+  startedAt   DateTime            @default(now())
+  completedAt DateTime?
+
+  @@index([childId, puzzleId])
+  @@map("puzzle_attempt")
+}
+
+model ChildInventoryItem {
+  id         String         @id @default(uuid(7)) @db.Uuid
+  familyId   String         @db.Uuid
+  family     Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId    String         @db.Uuid
+  child      Child          @relation(fields: [childId], references: [id], onDelete: Cascade)
+  itemId     String         @db.Uuid
+  item       ItemDefinition @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  quantity   Int            @default(0)
+  equippedAt DateTime?
+  acquiredAt DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([childId, itemId])
+  @@map("child_inventory_item")
+}
+
+enum InventorySourceType {
+  OBJECTIVE_PROGRESS
+  QUEST_REWARD
+  CHAPTER_REWARD
+  PUZZLE_REWARD
+  ACHIEVEMENT
+  PURCHASE
+  PARENT_GRANT
+  CONSUMED
+}
+
+/// Append-only inventory ledger. `sourceKey` makes every grant idempotent.
+model InventoryGrant {
+  id         String              @id @default(uuid(7)) @db.Uuid
+  familyId   String              @db.Uuid
+  family     Family              @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  childId    String              @db.Uuid
+  child      Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  itemId     String              @db.Uuid
+  item       ItemDefinition      @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  /// Positive = granted, negative = consumed/spent.
+  quantity   Int
+  sourceType InventorySourceType
+  sourceKey  String              @unique
+  createdAt  DateTime            @default(now())
+
+  @@index([childId, itemId])
+  @@map("inventory_grant")
+}
