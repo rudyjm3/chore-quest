@@ -85,12 +85,18 @@ pnpm test:e2e (PW_CHROMIUM_PATH=/opt/pw-browsers/chromium)
 
 ## Test results
 
-| Suite                                                          | Result                                                       |
-| -------------------------------------------------------------- | ------------------------------------------------------------ |
-| Unit (`pnpm test`)                                             | 48 passed / 48 (7 files)                                     |
-| Integration (`pnpm test:integration`)                          | 31 passed / 31 (5 files) on PostgreSQL 16                    |
-| End-to-end (`pnpm test:e2e`)                                   | 22 passed / 22 (11 scenarios × chromium + Pixel 7 emulation) |
-| Lint / format / typecheck / schema validate / production build | pass                                                         |
+| Suite                                                                                                        | Result                                                       |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| Unit (`pnpm test`)                                                                                           | 48 passed / 48 (7 files)                                     |
+| Integration (`pnpm test:integration`)                                                                        | 31 passed / 31 (5 files) on PostgreSQL 16                    |
+| End-to-end (`pnpm test:e2e`)                                                                                 | 22 passed / 22 (11 scenarios × chromium + Pixel 7 emulation) |
+| Lint / format / typecheck / schema validate / production build                                               | pass                                                         |
+| Fresh clone following the README (install, migrate deploy, seed ×2, dev seed, `pnpm check`)                  | pass                                                         |
+| Development server: landing, health and sign-in pages return 200; `/parent` and `/child` redirect to sign-in | pass                                                         |
+
+A first fresh-clone run exposed a setup bug: the git-ignored Prisma client was never generated, so
+`pnpm db:seed` failed on a clean checkout. A `postinstall` that runs `prisma generate` fixed it, and a
+second fresh clone passed every step above.
 
 Edge cases verified by integration tests: approve same chore twice; four concurrent approvals; child
 submits an already-approved occurrence; reject → resubmit → approve; one chore qualifying for multiple
