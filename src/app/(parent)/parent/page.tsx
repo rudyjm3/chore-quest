@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db/prisma";
-import { addDays, todayIn } from "@/lib/utils/dates";
+import { todayIn } from "@/lib/utils/dates";
 import { requireParentContext } from "@/server/policies/context";
 import { listChildren } from "@/server/services/child.service";
 import { ensureRoutineRuns } from "@/server/services/routine.service";
@@ -16,13 +16,9 @@ export const metadata = { title: "Dashboard" };
 export default async function ParentDashboardPage() {
   const ctx = await requireParentContext();
   const today = todayIn(ctx.timezone);
-  // Materialize the coming week (idempotent). A scheduled job will take over in a later milestone.
-  await ensureTaskOccurrences(prisma, {
-    familyId: ctx.familyId,
-    from: today,
-    to: addDays(today, 7),
-  });
-  await ensureRoutineRuns(prisma, { familyId: ctx.familyId, from: today, to: addDays(today, 7) });
+  // The cron job (/api/cron/maintenance) materializes the week; this is a cheap today-only net.
+  await ensureTaskOccurrences(prisma, { familyId: ctx.familyId, from: today, to: today });
+  await ensureRoutineRuns(prisma, { familyId: ctx.familyId, from: today, to: today });
 
   const [children, pendingReviews, pendingRuns, approvedToday] = await Promise.all([
     listChildren(prisma, ctx.familyId),

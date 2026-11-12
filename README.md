@@ -58,14 +58,15 @@ The Prisma client is generated into `src/generated/prisma`, which is git-ignored
 All variables are documented in [`.env.example`](.env.example) and validated at startup by
 `src/lib/env.ts`. The important ones:
 
-| Variable               | Purpose                                                             |
-| ---------------------- | ------------------------------------------------------------------- |
-| `DATABASE_URL`         | PostgreSQL connection used by Prisma (runtime, migrations, seed)    |
-| `TEST_DATABASE_URL`    | A **separate** database that integration tests reset                |
-| `BETTER_AUTH_SECRET`   | 32+ random bytes; signs parent sessions (`openssl rand -base64 32`) |
-| `BETTER_AUTH_URL`      | Public origin, e.g. `http://localhost:3000`                         |
-| `NEXT_PUBLIC_APP_URL`  | Same origin, exposed to the browser for the auth client             |
-| `CHILD_SESSION_SECRET` | 32+ random bytes; HMAC key for child session tokens                 |
+| Variable               | Purpose                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`         | PostgreSQL connection used by Prisma (runtime, migrations, seed)                                             |
+| `TEST_DATABASE_URL`    | A **separate** database that integration tests reset                                                         |
+| `BETTER_AUTH_SECRET`   | 32+ random bytes; signs parent sessions (`openssl rand -base64 32`)                                          |
+| `BETTER_AUTH_URL`      | Public origin, e.g. `http://localhost:3000`                                                                  |
+| `NEXT_PUBLIC_APP_URL`  | Same origin, exposed to the browser for the auth client                                                      |
+| `CHILD_SESSION_SECRET` | 32+ random bytes; HMAC key for child session tokens                                                          |
+| `CRON_SECRET`          | 16+ random chars; Bearer secret for `/api/cron/maintenance` (optional locally; route returns 503 when unset) |
 
 Never commit `.env`. Only `.env.example` is tracked.
 

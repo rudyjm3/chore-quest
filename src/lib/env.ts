@@ -15,6 +15,8 @@ const serverEnvSchema = z.object({
   BETTER_AUTH_URL: z.url(),
   NEXT_PUBLIC_APP_URL: z.url(),
   CHILD_SESSION_SECRET: z.string().min(32, "CHILD_SESSION_SECRET must be at least 32 characters"),
+  /** Bearer secret for /api/cron/*. Optional so dev works; when unset the cron route is disabled. */
+  CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 characters").optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
