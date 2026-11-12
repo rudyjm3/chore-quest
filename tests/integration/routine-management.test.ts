@@ -7,6 +7,7 @@ import {
   completeRoutineStep,
   createRoutine,
   ensureRoutineRuns,
+  listVisibleRunsForChild,
   moveRoutineStep,
   reorderRoutineSteps,
   setRoutineStepOptional,
@@ -84,6 +85,27 @@ describe("routine editing", () => {
     expect(result.run.status).toBe("SUBMITTED");
   });
 
+  it("concurrent requests cannot leave a routine with no required step", async () => {
+    const { ctx, routine, steps } = await setup();
+    const [a, b, c] = steps.map((s) => s.id);
+    await setRoutineStepOptional(db, ctx, routine.id, c, true);
+    // Two required steps remain (a, b): making both optional at once must never both succeed.
+    for (let round = 0; round < 10; round += 1) {
+      await db.routineStep.updateMany({
+        where: { id: { in: [a, b] } },
+        data: { isOptional: false },
+      });
+      await Promise.allSettled([
+        setRoutineStepOptional(db, ctx, routine.id, a, true),
+        setRoutineStepOptional(db, ctx, routine.id, b, true),
+      ]);
+      const required = await db.routineStep.count({
+        where: { routineId: routine.id, isOptional: false },
+      });
+      expect(required).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it("archived routines stop generating runs and cannot be assigned", async () => {
     const { ctx, family, child, routine } = await setup();
     await archiveRoutine(db, ctx, routine.id, true);
@@ -138,6 +160,46 @@ describe("routine editing", () => {
     expect(
       (await db.routineRun.findUniqueOrThrow({ where: { id: run.id } })).bonusPointsSnapshot,
     ).toBe(3);
+  });
+});
+
+describe("overnight windows after local midnight", () => {
+  it("keeps yesterday's unfinished run visible and completable until the window closes", async () => {
+    const { family, child, childCtx, steps, run } = await setup({
+      windowStart: "20:00",
+      windowEnd: "06:00",
+    });
+    await ensureRoutineRuns(db, { familyId: family.id, from: "2026-11-11", to: "2026-11-11" });
+    const base = { familyId: family.id, childId: child.id, timezone: "America/New_York" };
+    // 02:00 NY on the 11th = 07:00Z
+    const night = new Date("2026-11-11T07:00:00Z");
+    const visible = await listVisibleRunsForChild(db, { ...base, today: "2026-11-11", now: night });
+    expect(visible.map((r) => r.id)).toContain(run.id);
+    expect(visible).toHaveLength(2);
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(night);
+    await expect(completeRoutineStep(db, childCtx, run.id, steps[0].id)).resolves.toBeTruthy();
+    vi.useRealTimers();
+
+    // 07:00 NY: the window closed, yesterday's run disappears.
+    const morning = new Date("2026-11-11T12:00:00Z");
+    const later = await listVisibleRunsForChild(db, { ...base, today: "2026-11-11", now: morning });
+    expect(later.map((r) => r.id)).not.toContain(run.id);
+    expect(later).toHaveLength(1);
+  });
+
+  it("does not resurface yesterday's run when it has no window", async () => {
+    const { family, child, run } = await setup();
+    await ensureRoutineRuns(db, { familyId: family.id, from: "2026-11-11", to: "2026-11-11" });
+    const visible = await listVisibleRunsForChild(db, {
+      familyId: family.id,
+      childId: child.id,
+      timezone: "America/New_York",
+      today: "2026-11-11",
+      now: new Date("2026-11-11T07:00:00Z"),
+    });
+    expect(visible.map((r) => r.id)).not.toContain(run.id);
   });
 });
 

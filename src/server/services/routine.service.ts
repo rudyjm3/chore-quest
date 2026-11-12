@@ -3,7 +3,7 @@ import { checkCompletionWindow, windowOf } from "@/features/routines/window";
 import { scheduledDatesBetween } from "@/features/tasks/recurrence";
 import type { DbClient } from "@/lib/db/prisma";
 import { AppError } from "@/lib/errors";
-import { dbToLocalDate, localDateToDb, type LocalDate } from "@/lib/utils/dates";
+import { addDays, dbToLocalDate, localDateToDb, type LocalDate } from "@/lib/utils/dates";
 import type {
   AssignRoutineInput,
   CreateRoutineInput,
@@ -232,16 +232,21 @@ export async function setRoutineStepOptional(
   stepId: string,
   isOptional: boolean,
 ) {
-  const routine = await requireRoutine(db, ctx, routineId);
-  const step = routine.steps.find((s) => s.id === stepId);
-  if (!step) throw AppError.notFound("Routine step");
-  if (isOptional) {
-    const otherRequired = routine.steps.filter((s) => s.id !== stepId && !s.isOptional).length;
-    if (otherRequired === 0) {
+  assertPermission(ctx, "canManageTasks");
+  const step = await db.$transaction(async (tx) => {
+    // Lock the routine so two concurrent edits cannot each see "another required step exists".
+    const locked = await tx.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "routine" WHERE id = ${routineId}::uuid AND "familyId" = ${ctx.familyId}::uuid FOR UPDATE`;
+    if (locked.length === 0) throw AppError.notFound("Routine");
+    const steps = await tx.routineStep.findMany({ where: { routineId } });
+    const target = steps.find((s) => s.id === stepId);
+    if (!target) throw AppError.notFound("Routine step");
+    if (isOptional && steps.filter((s) => s.id !== stepId && !s.isOptional).length === 0) {
       throw AppError.invalidState("A routine needs at least one required step");
     }
-  }
-  await db.routineStep.update({ where: { id: step.id }, data: { isOptional } });
+    await tx.routineStep.update({ where: { id: target.id }, data: { isOptional } });
+    return target;
+  });
   await auditRoutine(db, ctx, "routine.step.optional", "RoutineStep", step.id, { isOptional });
 }
 
@@ -375,6 +380,34 @@ export async function listRunsForChild(
       stepProgress: true,
     },
     orderBy: { localDate: "asc" },
+  });
+}
+
+/**
+ * Runs a child should see right now: today's, plus yesterday's unfinished run while its overnight
+ * completion window (e.g. 20:00-06:00) is still open after local midnight.
+ */
+export async function listVisibleRunsForChild(
+  db: DbClient,
+  params: { familyId: string; childId: string; today: LocalDate; timezone: string; now?: Date },
+) {
+  const yesterday = addDays(params.today, -1);
+  const runs = await listRunsForChild(db, {
+    familyId: params.familyId,
+    childId: params.childId,
+    from: yesterday,
+    to: params.today,
+  });
+  const now = params.now ?? new Date();
+  return runs.filter((run) => {
+    const localDate = dbToLocalDate(run.localDate);
+    if (localDate === params.today) return true;
+    if (run.status === "SUBMITTED" || run.status === "APPROVED") return false;
+    const window = windowOf(run.assignment.windowStart, run.assignment.windowEnd);
+    return (
+      Boolean(window) &&
+      checkCompletionWindow({ now, localDate, window, timeZone: params.timezone }).open
+    );
   });
 }
 

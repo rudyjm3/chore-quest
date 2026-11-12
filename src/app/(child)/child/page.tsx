@@ -2,7 +2,7 @@ import { ChildTodayList } from "@/features/approvals/components/child-today";
 import { prisma } from "@/lib/db/prisma";
 import { todayIn } from "@/lib/utils/dates";
 import { requireChildContext } from "@/server/policies/context";
-import { ensureRoutineRuns, listRunsForChild } from "@/server/services/routine.service";
+import { ensureRoutineRuns, listVisibleRunsForChild } from "@/server/services/routine.service";
 import { ensureTaskOccurrences, listOccurrencesForChild } from "@/server/services/task.service";
 
 export const metadata = { title: "Today" };
@@ -33,11 +33,11 @@ export default async function ChildHomePage() {
       from: today,
       to: today,
     }),
-    listRunsForChild(prisma, {
+    listVisibleRunsForChild(prisma, {
       familyId: ctx.familyId,
       childId: ctx.childId,
-      from: today,
-      to: today,
+      today,
+      timezone: family.timezone,
     }),
   ]);
   return (
