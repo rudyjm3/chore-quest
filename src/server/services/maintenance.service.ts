@@ -1,4 +1,5 @@
 import type { DbClient } from "@/lib/db/prisma";
+import { pruneOutbox } from "@/lib/email/dev-driver";
 import { log } from "@/lib/logging";
 import { addDays, localDateToDb, todayIn, type LocalDate } from "@/lib/utils/dates";
 
@@ -16,6 +17,7 @@ export interface MaintenanceSummary {
   runsCreated: number;
   goalAssignmentsExpired: number;
   completionsReprocessed: number;
+  outboxPruned: number;
   familyFailures: number;
 }
 
@@ -63,6 +65,7 @@ export async function runScheduledMaintenance(
     runsCreated: 0,
     goalAssignmentsExpired: 0,
     completionsReprocessed: 0,
+    outboxPruned: 0,
     familyFailures: 0,
   };
 
@@ -101,5 +104,6 @@ export async function runScheduledMaintenance(
   // Retry completions stuck in PENDING/FAILED (bounded by the service's own limit).
   const results = await reprocessPendingCompletions(db, 100);
   summary.completionsReprocessed = results.length;
+  summary.outboxPruned = await pruneOutbox(db, 7, options.now);
   return summary;
 }

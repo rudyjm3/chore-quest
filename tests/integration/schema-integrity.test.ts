@@ -161,3 +161,55 @@ describe("database integrity", () => {
     expect(await db.child.count({ where: { familyId: family.id } })).toBe(0);
   });
 });
+
+describe("family_invitation constraints (migration family_invitation_constraints)", () => {
+  const base = (familyId: string, tokenHash: string) => ({
+    familyId,
+    email: "invitee@example.test",
+    tokenHash,
+    expiresAt: new Date(Date.now() + 86_400_000),
+  });
+
+  it("cannot invite someone as OWNER", async () => {
+    const { family } = await createFamilyFixture(db);
+    await expect(
+      db.familyInvitation.create({ data: { ...base(family.id, "h1"), role: "OWNER" } }),
+    ).rejects.toThrow(/guardian_only|check/i);
+  });
+
+  it("cannot be both accepted and revoked, and acceptance needs a user", async () => {
+    const { family, user } = await createFamilyFixture(db);
+    await expect(
+      db.familyInvitation.create({
+        data: {
+          ...base(family.id, "h2"),
+          acceptedAt: new Date(),
+          acceptedById: user.id,
+          revokedAt: new Date(),
+        },
+      }),
+    ).rejects.toThrow(/single_outcome|check/i);
+    await expect(
+      db.familyInvitation.create({ data: { ...base(family.id, "h3"), acceptedAt: new Date() } }),
+    ).rejects.toThrow(/accepted_has_user|check/i);
+  });
+
+  it("allows only one open invitation per family and email, but a new one after revoking", async () => {
+    const { family } = await createFamilyFixture(db);
+    const first = await db.familyInvitation.create({ data: base(family.id, "h4") });
+    await expect(db.familyInvitation.create({ data: base(family.id, "h5") })).rejects.toThrow(
+      /Unique/,
+    );
+    await db.familyInvitation.update({ where: { id: first.id }, data: { revokedAt: new Date() } });
+    await expect(db.familyInvitation.create({ data: base(family.id, "h6") })).resolves.toBeTruthy();
+  });
+
+  it("token hashes are unique", async () => {
+    const a = await createFamilyFixture(db);
+    const b = await createFamilyFixture(db);
+    await db.familyInvitation.create({ data: base(a.family.id, "same") });
+    await expect(db.familyInvitation.create({ data: base(b.family.id, "same") })).rejects.toThrow(
+      /Unique/,
+    );
+  });
+});

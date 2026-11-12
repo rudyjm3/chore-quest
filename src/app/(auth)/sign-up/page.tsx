@@ -5,8 +5,10 @@ import { getParentSession } from "@/lib/auth/session";
 
 export const metadata = { title: "Create account" };
 
-export default async function SignUpPage() {
+export default async function SignUpPage({ searchParams }: PageProps<"/sign-up">) {
   const session = await getParentSession();
   if (session) redirect("/parent");
-  return <SignUpForm />;
+  const params = await searchParams;
+  const next = typeof params.next === "string" ? params.next : undefined;
+  return <SignUpForm next={next} />;
 }

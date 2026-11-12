@@ -17,6 +17,8 @@ env:
   NEXT_PUBLIC_APP_URL: http://localhost:3100
   CHILD_SESSION_SECRET: ci-only-child-secret-value-that-is-long-enough-0123
   CRON_SECRET: ci-only-cron-secret-value-0123456789
+  EMAIL_DRIVER: dev
+  REQUIRE_EMAIL_VERIFICATION: "true"
 
 jobs:
   quality:

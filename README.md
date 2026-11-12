@@ -66,6 +66,8 @@ All variables are documented in [`.env.example`](.env.example) and validated at 
 | `BETTER_AUTH_URL`      | Public origin, e.g. `http://localhost:3000`                                                                  |
 | `NEXT_PUBLIC_APP_URL`  | Same origin, exposed to the browser for the auth client                                                      |
 | `CHILD_SESSION_SECRET` | 32+ random bytes; HMAC key for child session tokens                                                          |
+| `EMAIL_DRIVER`         | `dev` (default): store mail in `email_outbox`, deliver nothing. See `docs/development/EMAIL.md` |
+| `REQUIRE_EMAIL_VERIFICATION` | `true` (default). `false` only while no email provider is configured |
 | `CRON_SECRET`          | 16+ random chars; Bearer secret for `/api/cron/maintenance` (optional locally; route returns 503 when unset) |
 
 Never commit `.env`. Only `.env.example` is tracked.

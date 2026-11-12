@@ -16,6 +16,10 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.url(),
   CHILD_SESSION_SECRET: z.string().min(32, "CHILD_SESSION_SECRET must be at least 32 characters"),
   /** Bearer secret for /api/cron/*. Optional so dev works; when unset the cron route is disabled. */
+  /** Outgoing mail driver. Only "dev" (store in email_outbox) ships; see docs/development/EMAIL.md. */
+  EMAIL_DRIVER: z.enum(["dev"]).default("dev"),
+  /** Require a verified email before a parent can sign in. Set "false" only until a provider exists. */
+  REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]).default("true"),
   CRON_SECRET: z.string().min(16, "CRON_SECRET must be at least 16 characters").optional(),
 });
 

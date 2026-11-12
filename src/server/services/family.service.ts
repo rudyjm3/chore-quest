@@ -55,7 +55,11 @@ export async function getFamilyOverview(db: DbClient, ctx: ParentContext) {
     where: { id: ctx.familyId },
     include: {
       settings: true,
-      members: { include: { user: { select: { id: true, name: true, email: true } } } },
+      members: {
+        where: { status: "ACTIVE" },
+        orderBy: { joinedAt: "asc" },
+        include: { user: { select: { id: true, name: true, email: true } } },
+      },
       children: { where: { status: "ACTIVE" }, orderBy: { createdAt: "asc" } },
     },
   });

@@ -47,15 +47,17 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  familyMemberships FamilyMember[]
-  createdFamilies   Family[]            @relation("FamilyCreatedBy")
-  auditLogs         AuditLog[]
-  childSessions     ChildSession[]      @relation("ChildSessionIssuedBy")
-  createdTasks      Task[]              @relation("TaskCreatedBy") // @s2
-  parentReviews     ParentReview[] // @s3
-  createdGoals      Goal[]              @relation("GoalCreatedBy") // @s4
-  ledgerEntries     RewardLedgerEntry[] // @s5
-  rewardResolutions RewardRedemption[]  @relation("RedemptionResolvedBy") // @s5
+  familyMemberships   FamilyMember[]
+  sentInvitations     FamilyInvitation[]  @relation("InvitationInvitedBy")
+  acceptedInvitations FamilyInvitation[]  @relation("InvitationAcceptedBy")
+  createdFamilies     Family[]            @relation("FamilyCreatedBy")
+  auditLogs           AuditLog[]
+  childSessions       ChildSession[]      @relation("ChildSessionIssuedBy")
+  createdTasks        Task[]              @relation("TaskCreatedBy") // @s2
+  parentReviews       ParentReview[] // @s3
+  createdGoals        Goal[]              @relation("GoalCreatedBy") // @s4
+  ledgerEntries       RewardLedgerEntry[] // @s5
+  rewardResolutions   RewardRedemption[]  @relation("RedemptionResolvedBy") // @s5
 
   @@unique([email])
   @@map("user")
@@ -146,6 +148,7 @@ model Family {
 
   settings            FamilySettings?
   members             FamilyMember[]
+  invitations         FamilyInvitation[]
   children            Child[]
   childSessions       ChildSession[]
   auditLogs           AuditLog[]
@@ -208,6 +211,49 @@ model FamilyMember {
   @@unique([familyId, userId])
   @@index([userId])
   @@map("family_member")
+}
+
+/// Invitation for another adult to join a household as GUARDIAN (email-bound, single use).
+/// Only the SHA-256 of the token is stored; the raw token exists in the invite link only.
+/// "Pending" = acceptedAt IS NULL AND revokedAt IS NULL AND expiresAt > now().
+/// Hand-written constraints (guardian-only role, one pending invite per family+email) live in
+/// migration `family_invitation_constraints`.
+model FamilyInvitation {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  familyId     String     @db.Uuid
+  family       Family     @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  /// Normalised (trimmed, lower-case) invitee email.
+  email        String
+  role         FamilyRole @default(GUARDIAN)
+  tokenHash    String     @unique
+  invitedById  String?    @db.Uuid
+  invitedBy    User?      @relation("InvitationInvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  acceptedById String?    @db.Uuid
+  acceptedBy   User?      @relation("InvitationAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  revokedAt    DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@index([familyId, createdAt])
+  @@index([email])
+  @@map("family_invitation")
+}
+
+/// Outgoing mail captured by the DEVELOPMENT email driver so local dev and tests can read links.
+/// Not household data (auth mail exists before a family does), so it has no familyId. Rows older
+/// than 7 days are pruned by the maintenance job. Real providers never write here.
+model EmailOutbox {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  kind      String
+  toAddress String
+  subject   String
+  textBody  String
+  createdAt DateTime @default(now())
+
+  @@index([toAddress, createdAt])
+  @@index([createdAt])
+  @@map("email_outbox")
 }
 
 // --- Children -----------------------------------------------------------------
