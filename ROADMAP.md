@@ -4,40 +4,43 @@ Status key: ✅ done · 🟡 partial · ⬜ not started. Dependencies are listed
 
 ## Phase 1 — Foundation (this milestone) ✅
 
-| Item                                                                                                      | Status | Notes                                               |
-| --------------------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------- |
-| Project scaffolding (Next 16, TS strict, Tailwind 4, shadcn)                                              | ✅     | pnpm, Prettier, ESLint 9                            |
-| Database schema + 7 migrations                                                                            | ✅     | Validated on PostgreSQL 16; drift check in CI       |
-| Idempotent seed (presets, routines, pirate adventure)                                                     | ✅     | Dev-only demo seed separate                         |
-| Authentication integration (Better Auth)                                                                  | ✅     | Email + password; email verification/reset deferred |
-| Child sessions (family code + PIN)                                                                        | ✅     | Lockout after 5 failures                            |
-| Authorization policies + family isolation                                                                 | ✅     | Unit + integration tested                           |
-| Domain services (family, child, task, routine, approval, progression, goal, reward, adventure, inventory) | ✅     | Representative operations implemented               |
-| Approval pipeline with idempotent rewards/goals/quests                                                    | ✅     | Concurrency-tested                                  |
-| UI shells (parent + child), design tokens, shared components                                              | ✅     | Functional, not final art                           |
-| Testing foundation (unit, integration, e2e smoke)                                                         | ✅     |                                                     |
-| CI workflow                                                                                               | ✅     | `.github/workflows/ci.yml`                          |
-| Documentation                                                                                             | ✅     | README, ARCHITECTURE, AGENTS, docs/*                |
+| Item                                                                                                      | Status | Notes                                                 |
+| --------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------- |
+| Project scaffolding (Next 16, TS strict, Tailwind 4, shadcn)                                              | ✅     | pnpm, Prettier, ESLint 9                              |
+| Database schema + 7 migrations                                                                            | ✅     | Validated on PostgreSQL 16; drift check in CI         |
+| Idempotent seed (presets, routines, pirate adventure)                                                     | ✅     | Dev-only demo seed separate                           |
+| Authentication integration (Better Auth)                                                                  | ✅     | Email + password; verification/reset added in Phase 2 |
+| Child sessions (family code + PIN)                                                                        | ✅     | Lockout after 5 failures                              |
+| Authorization policies + family isolation                                                                 | ✅     | Unit + integration tested                             |
+| Domain services (family, child, task, routine, approval, progression, goal, reward, adventure, inventory) | ✅     | Representative operations implemented                 |
+| Approval pipeline with idempotent rewards/goals/quests                                                    | ✅     | Concurrency-tested                                    |
+| UI shells (parent + child), design tokens, shared components                                              | ✅     | Functional, not final art                             |
+| Testing foundation (unit, integration, e2e smoke)                                                         | ✅     |                                                       |
+| CI workflow                                                                                               | ✅     | `.github/workflows/ci.yml`                            |
+| Documentation                                                                                             | ✅     | README, ARCHITECTURE, AGENTS, docs/*                  |
 
-## Phase 2 — Family Management 🟡
+## Phase 2 — Family Management ✅
 
-Depends on: Phase 1.
+Depends on: Phase 1. Delivered in the Phase 2 branch; see `docs/BUILD_HEALTH_REPORT.md` for counts.
 
-- ⬜ Guardian invitations by email (needs an email provider) and membership management UI
-- ⬜ Email verification + password reset flows (Better Auth, same provider)
-- 🟡 Child profiles: avatars, archive/restore UI (service exists), PIN reset UX
-- 🟡 Task library UI: edit/archive tasks, preset browser with categories (create/assign done)
-- 🟡 Assignments: edit schedule, pause/resume (done), end dates UI, per-child due times
-- ⬜ Scheduled occurrence/run materialization job (Vercel Cron) replacing lazy generation
-- 🟡 Routines: reorder steps, optional steps UI, completion windows enforcement
-- ⬜ Activity history pages with pagination for parents and children
+- ✅ Guardian invitations by email (hashed single-use tokens, 7-day expiry, audit; link shown to the owner as a fallback) and membership management UI
+- ✅ Email verification + password reset (Better Auth) behind the `EmailSender` interface; development driver only (ADR 0008)
+- ⬜ **Plug in a real email provider** (deliberately not chosen: no paid service was signed up for). Steps in `docs/development/EMAIL.md`
+- ✅ Child profiles: fixed avatar set, archive/restore UI, PIN reset UX (confirm + sign-out everywhere), family code rotation
+- ✅ Task library UI: edit/archive/restore tasks, preset browser grouped by category
+- ✅ Assignments: edit schedule, points, due time, end date; pause/resume/archive (edits never rewrite generated occurrences)
+- ✅ Scheduled occurrence/run materialization (Vercel Cron, ADR 0007) replacing lazy generation
+- ✅ Routines: reorder steps, optional steps, edit/archive/restore, completion windows enforced server-side
+- ✅ Activity history pages with cursor pagination for parents (per child, date range) and children
+- 🟡 Not done in Phase 2: adding/removing steps of an existing routine (the run/step-progress rows are created per run, so this needs a
+  reconciliation design); per-child due times beyond the per-assignment time; "sign out everywhere" for parents
 
 ## Phase 3 — Goals and Rewards 🟡
 
-Depends on: Phase 2 (history pages), scheduled job.
+Depends on: Phase 2 (history pages and scheduled job are done).
 
 - 🟡 Goal management UI (create/assign done; edit, archive, reset rules pending)
-- ⬜ Goal expiry job (mark `EXPIRED` after `endDate`) and streak recomputation from contributions
+- 🟡 Goal expiry job ✅ (Phase 2 cron); streak recomputation from contributions ⬜
 - 🟡 Approvals: bulk approve, notes/photos on submissions, notifications
 - 🟡 Reward catalogue + redemption UI (services exist: `createRewardDefinition`, `requestRedemption`, `resolveRedemption`)
 - ⬜ Achievements gallery for children

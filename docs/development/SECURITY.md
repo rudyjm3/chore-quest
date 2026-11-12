@@ -17,11 +17,23 @@
 | Error handling         | `runAction` never leaks internal errors to clients                                                                                                                                           |
 | Dependencies           | Pinned Prisma/Better Auth versions; lockfile committed; `pnpm install --frozen-lockfile` in CI                                                                                               |
 
+## Phase 2 additions
+
+- **Cron route** `/api/cron/maintenance`: constant-time Bearer check against `CRON_SECRET`; fails closed (503) when unset. It is not covered by
+  `proxy.ts`, so the secret is the only gate. It accepts no input.
+- **Guardian invitations**: 256-bit random token, only its SHA-256 stored; single use (row lock on accept); 7-day expiry; bound to the invited
+  email; OWNER only; at most 10 open invites; unknown/used/expired tokens are indistinguishable; audit entries never contain the address.
+- **Email verification / reset**: Better Auth tokens (reset link valid 1 h, verification 24 h), sessions revoked on password reset, auth endpoints
+  rate limited. The reset request never reveals whether an address exists. Mail links are never logged.
+- **Post-auth redirects** only accept same-site relative paths (`safeNext`).
+- **PIN reset** revokes all of the child's sessions. **Family code rotation** (OWNER) invalidates the old code immediately.
+- **Dev email driver** stores links in `email_outbox`; in production it logs a warning (mail is not delivered) and `/dev/outbox` returns 404.
+
 ## Deferred (tracked in ROADMAP.md)
 
 - Content-Security-Policy (after the asset/CDN decision), HSTS at the platform level.
 - Edge rate limiting for child sign-in and health endpoint (Better Auth covers parent endpoints only).
-- Email verification and password reset (needs an email provider), 2FA for parents.
+- A real email provider (verification/reset/invites currently use the development driver), 2FA for parents.
 - Dependency scanning in CI (`pnpm audit`, Dependabot/Renovate).
 - Session device listing / "sign out everywhere" for parents.
 - Formal threat model and penetration test before pilot.

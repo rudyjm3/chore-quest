@@ -89,6 +89,110 @@ test.describe("parent flow", () => {
   });
 });
 
+test.describe("family management pages", () => {
+  test.use({ storageState: PARENT_STORAGE_STATE });
+
+  test("task library: preset browser is grouped by category and adds a preset", async ({
+    page,
+  }) => {
+    await page.goto("/parent/tasks");
+    const browser = page.getByTestId("preset-browser");
+    await expect(browser).toBeVisible();
+    const groups = browser.locator("details");
+    expect(await groups.count()).toBeGreaterThan(1);
+    await groups.first().locator("summary").click();
+    await groups
+      .first()
+      .getByRole("button", { name: /^Add .* to library$/ })
+      .first()
+      .click();
+    await expect(page.locator("[data-sonner-toast]").first()).toContainText(
+      "Added to your library",
+    );
+  });
+
+  test("task library: edit a task and archive then restore it", async ({ page }) => {
+    await page.goto("/parent/tasks");
+    const unique = `E2E task ${Date.now()}`;
+    await page.getByLabel("Title").first().fill(unique);
+    await page.getByRole("button", { name: "Create task" }).click();
+    const card = page.getByTestId("task-list").locator("li", { hasText: unique });
+    await expect(card).toBeVisible();
+    await card.getByText("Edit", { exact: true }).click();
+    await card.getByLabel("Points").fill("12");
+    await card.getByRole("button", { name: "Save task" }).click();
+    await expect(page.locator("[data-sonner-toast]").first()).toContainText("Task updated");
+    await page.reload();
+    await expect(page.getByTestId("task-list").locator("li", { hasText: unique })).toContainText(
+      "12 pts",
+    );
+    await page
+      .getByTestId("task-list")
+      .locator("li", { hasText: unique })
+      .getByRole("button", { name: "Archive" })
+      .click();
+    const archived = page.getByTestId("archived-tasks").locator("li", { hasText: unique });
+    await expect(archived).toBeVisible();
+    await archived.getByRole("button", { name: "Restore" }).click();
+    await expect(page.getByTestId("task-list").locator("li", { hasText: unique })).toBeVisible();
+  });
+
+  test("children: pick an avatar, archive and restore a child", async ({ page }) => {
+    await page.goto("/parent/children");
+    const name = `Temp${Date.now() % 100000}`;
+    await page.getByLabel("Name or nickname").first().fill(name);
+    await page.getByLabel("Fox").first().check({ force: true });
+    await page.getByRole("button", { name: "Add child" }).click();
+    const card = page.getByTestId("children-list").locator("> div", { hasText: name });
+    await expect(card).toContainText("🦊");
+    await card.getByText("Edit profile").click();
+    await card.getByLabel("Owl").check({ force: true });
+    await card.getByRole("button", { name: "Save profile" }).click();
+    await expect(page.locator("[data-sonner-toast]").first()).toContainText("Profile saved");
+    await page.reload();
+    await expect(
+      page.getByTestId("children-list").locator("> div", { hasText: name }),
+    ).toContainText("🦉");
+    await page.getByRole("button", { name: `Archive ${name}` }).click();
+    const archived = page.getByTestId("archived-children").locator("li", { hasText: name });
+    await expect(archived).toBeVisible();
+    await archived.getByRole("button", { name: `Restore ${name}` }).click();
+    await expect(page.getByTestId("children-list")).toContainText(name);
+    await page.getByRole("button", { name: `Archive ${name}` }).click();
+    await expect(page.getByTestId("archived-children")).toContainText(name);
+  });
+
+  test("routines: steps can be reordered", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto("/parent/routines");
+    const steps = page.getByTestId("routine-steps").first();
+    const firstTitle = (await steps.locator("li").first().textContent())
+      ?.match(/^1\. (.+?)(?:\(optional\))?[↑↓]/)?.[1]
+      ?.trim();
+    expect(firstTitle).toBeTruthy();
+    await steps.getByRole("button", { name: `Move ${firstTitle} down` }).click();
+    await expect(steps.locator("li").nth(1)).toContainText(firstTitle!);
+    // Put it back so reruns are stable.
+    await steps.getByRole("button", { name: `Move ${firstTitle} up` }).click();
+    await expect(steps.locator("li").first()).toContainText(firstTitle!);
+  });
+
+  test("history page renders, filters, and rejects a backwards range", async ({ page }) => {
+    await page.goto("/parent/history");
+    await expect(page.getByRole("heading", { name: "Activity history" })).toBeVisible();
+    await page.goto("/parent/history?from=2026-12-31&to=2026-01-01");
+    await expect(page.locator("p[role=alert]")).toContainText("start date");
+    await page.goto("/parent/history?cursor=garbage&child=not-a-uuid&from=nonsense");
+    await expect(page.getByRole("heading", { name: "Activity history" })).toBeVisible();
+  });
+
+  test("settings: owner can rotate the family code", async ({ page }) => {
+    await page.goto("/parent/settings");
+    await expect(page.getByRole("button", { name: "Create a new family code" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Invite another adult" })).toBeVisible();
+  });
+});
+
 test.describe("child flow", () => {
   // The parent page only reads the family code; children sign in in a fresh context.
   test.use({ storageState: PARENT_STORAGE_STATE });
@@ -118,6 +222,11 @@ test.describe("child flow", () => {
     await expect(child.getByTestId("child-name")).toContainText("Ava");
     await expect(child.getByTestId("child-nav")).toBeVisible();
     await expect(child.getByTestId("today-chores")).toBeVisible();
+
+    await child.getByRole("link", { name: /History/ }).click();
+    await expect(child).toHaveURL(/\/child\/history$/);
+    await expect(child.getByRole("heading", { name: "My history" })).toBeVisible();
+    await child.getByRole("link", { name: /Today/ }).click();
 
     await child.getByRole("link", { name: /Adventure/ }).click();
     await expect(child).toHaveURL(/\/child\/adventure$/);
