@@ -191,5 +191,5 @@ family+email), each with a violating test in `schema-integrity.test.ts`. Drift c
 - The cron job is hourly; a brand-new assignment's future days appear on the next run (today appears immediately via the page safety net).
 - Invitation links use `NEXT_PUBLIC_APP_URL`, which Next inlines at build time; set it correctly for the build.
 - `email_outbox` stores live links when the dev driver is used in production; the viewer is disabled there and rows expire after 7 days.
-- The 9-item parent bottom navigation is tight on very small phones.
+- The parent bottom navigation now has 9 items; how it fits on very small phones was not visually checked.
 - Still deferred from the Phase 2 wish-list: parent "sign out everywhere", per-child due times beyond a per-assignment time.
