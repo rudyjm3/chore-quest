@@ -2,7 +2,11 @@ import { hashPin, verifyPin } from "@/lib/auth/pin";
 import { issueChildSession } from "@/lib/auth/child-session";
 import type { DbClient } from "@/lib/db/prisma";
 import { AppError } from "@/lib/errors";
-import type { ChildSignInInput, CreateChildInput } from "@/lib/validation/families";
+import type {
+  ChildSignInInput,
+  CreateChildInput,
+  UpdateChildProfileInput,
+} from "@/lib/validation/families";
 import type { ParentContext } from "@/server/policies/context";
 import {
   assertFamilyScope,
@@ -19,7 +23,55 @@ export async function listChildren(db: DbClient, familyId: string) {
   return db.child.findMany({
     where: { familyId, status: "ACTIVE" },
     orderBy: { createdAt: "asc" },
-    include: { credential: { select: { childId: true } } },
+    include: { credential: { select: { childId: true, lockedUntil: true } } },
+  });
+}
+
+export async function listArchivedChildren(db: DbClient, familyId: string) {
+  return db.child.findMany({
+    where: { familyId, status: "ARCHIVED" },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+}
+
+/** Rename a child or change their avatar. No other child data is collected. */
+export async function updateChildProfile(
+  db: DbClient,
+  ctx: ParentContext,
+  input: UpdateChildProfileInput,
+) {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canManageChildren");
+  const child = await requireChildInFamily(db, ctx.familyId, input.childId);
+  const updated = await db.child.update({
+    where: { id: child.id },
+    data: { displayName: input.displayName, avatarKey: input.avatarKey },
+  });
+  await recordAudit(db, {
+    familyId: ctx.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action: "child.update",
+    entityType: "Child",
+    entityId: child.id,
+  });
+  return updated;
+}
+
+/** Bring an archived child back. History is untouched; they must sign in again. */
+export async function restoreChild(db: DbClient, ctx: ParentContext, childId: string) {
+  assertPermission(ctx, "canManageChildren");
+  const child = await requireChildInFamily(db, ctx.familyId, childId);
+  if (child.status !== "ARCHIVED") throw AppError.invalidState("This child is not archived");
+  await db.child.update({ where: { id: child.id }, data: { status: "ACTIVE" } });
+  await recordAudit(db, {
+    familyId: ctx.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action: "child.restore",
+    entityType: "Child",
+    entityId: child.id,
   });
 }
 
@@ -53,6 +105,11 @@ export async function setChildPin(db: DbClient, ctx: ParentContext, childId: str
     where: { childId: child.id },
     create: { childId: child.id, pinHash: await hashPin(pin) },
     update: { pinHash: await hashPin(pin), failedAttempts: 0, lockedUntil: null },
+  });
+  // A reset PIN signs the child out everywhere: whoever knew the old PIN loses access.
+  await db.childSession.updateMany({
+    where: { childId: child.id, revokedAt: null },
+    data: { revokedAt: new Date() },
   });
   await recordAudit(db, {
     familyId: ctx.familyId,

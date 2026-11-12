@@ -138,9 +138,10 @@ export async function applyCompletionToGoals(
     where: {
       childId: completion.childId,
       familyId: completion.familyId,
-      // COMPLETED is included so a recurring weekly goal finished in an earlier week can still roll
-      // forward; completed periods themselves never take new contributions (checked below).
-      status: { in: ["ACTIVE", "COMPLETED"] },
+      // COMPLETED and EXPIRED are included so a recurring weekly goal whose earlier week was
+      // finished or lapsed (the scheduled job marks past-due periods EXPIRED) can still roll
+      // forward. Closed periods themselves never take new contributions (checked below).
+      status: { in: ["ACTIVE", "COMPLETED", "EXPIRED"] },
       goal: { isArchived: false },
     },
     include: { goal: true },

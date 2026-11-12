@@ -14,3 +14,6 @@ export * as rewardService from "./reward.service";
 export * as adventureService from "./adventure.service";
 export * as inventoryService from "./inventory.service";
 export * as auditService from "./audit.service";
+export * as maintenanceService from "./maintenance.service";
+export * as historyService from "./history.service";
+export * as invitationService from "./invitation.service";

@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { reviewOccurrence } from "@/server/services/approval.service";
 import { assignGoal, createGoal } from "@/server/services/goal.service";
+import { expireGoalAssignments } from "@/server/services/maintenance.service";
 import { getWallets } from "@/server/services/reward.service";
 
 import { disconnectTestDb, resetHouseholdData, testDb } from "../helpers/db";
@@ -271,5 +272,35 @@ describe("goals", () => {
       where: { goalId: weekly.id, periodKey: "week:2026-11-16" },
     });
     expect(next.progressCount).toBe(1);
+  });
+
+  it("a recurring weekly goal whose unfinished week was expired still rolls into the next week", async () => {
+    const { family, ctx } = await createFamilyFixture(db, { weekStartsOn: 1 });
+    const { child } = await createChildFixture(db, family.id);
+    const task = await createTaskFixture(db, family.id);
+    const weekly = await createGoal(db, ctx, {
+      familyId: family.id,
+      title: "3 this week",
+      type: "WEEKLY_COUNT",
+      targetCount: 3,
+      recurrence: "WEEKLY",
+      rewardPoints: 0,
+    });
+    await assignGoal(db, ctx, {
+      familyId: family.id,
+      goalId: weekly.id,
+      childIds: [child.id],
+      startDate: "2026-11-09",
+    });
+    // The week passes with nothing done; the scheduled job expires its assignment.
+    expect(await expireGoalAssignments(db, family.id, "2026-11-16")).toBe(1);
+    const expired = await db.goalAssignment.findFirstOrThrow({ where: { goalId: weekly.id } });
+    expect(expired.status).toBe("EXPIRED");
+
+    await approveOn({ family, ctx, childId: child.id, taskId: task.id, localDate: "2026-11-17" });
+    const next = await db.goalAssignment.findFirstOrThrow({
+      where: { goalId: weekly.id, periodKey: "week:2026-11-16" },
+    });
+    expect(next).toMatchObject({ status: "ACTIVE", progressCount: 1 });
   });
 });

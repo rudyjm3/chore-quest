@@ -1,13 +1,16 @@
 # Environments
 
-| Variable                                  | Dev                       | Test                            | CI                      | Production               |
-| ----------------------------------------- | ------------------------- | ------------------------------- | ----------------------- | ------------------------ |
-| `DATABASE_URL`                            | local `chore_quests_dev`  | same as dev                     | service container       | Supabase (Vercel secret) |
-| `TEST_DATABASE_URL`                       | local `chore_quests_test` | required                        | service container       | unset                    |
-| `BETTER_AUTH_SECRET`                      | any 32+ chars             | same                            | CI secret/value         | strong secret            |
-| `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` | `http://localhost:3000`   | `http://localhost:3100` for e2e | `http://localhost:3100` | `https://<domain>`       |
-| `CHILD_SESSION_SECRET`                    | any 32+ chars             | same                            | CI value                | strong secret            |
-| `PRISMA_LOG`                              | optional `query`          | —                               | —                       | unset                    |
+| Variable                                  | Dev                       | Test                            | CI                      | Production                                                   |
+| ----------------------------------------- | ------------------------- | ------------------------------- | ----------------------- | ------------------------------------------------------------ |
+| `DATABASE_URL`                            | local `chore_quests_dev`  | same as dev                     | service container       | Supabase (Vercel secret)                                     |
+| `TEST_DATABASE_URL`                       | local `chore_quests_test` | required                        | service container       | unset                                                        |
+| `BETTER_AUTH_SECRET`                      | any 32+ chars             | same                            | CI secret/value         | strong secret                                                |
+| `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` | `http://localhost:3000`   | `http://localhost:3100` for e2e | `http://localhost:3100` | `https://<domain>`                                           |
+| `CHILD_SESSION_SECRET`                    | any 32+ chars             | same                            | CI value                | strong secret                                                |
+| `CRON_SECRET`                             | optional, 16+ chars       | CI value                        | CI value                | strong secret (Vercel Cron sends it as a Bearer token)       |
+| `EMAIL_DRIVER`                            | `dev`                     | `dev`                           | `dev`                   | `dev` until a provider is plugged in (mail is NOT delivered) |
+| `REQUIRE_EMAIL_VERIFICATION`              | `true`                    | `true`                          | `true`                  | `true` once a provider exists; `false` before                |
+| `PRISMA_LOG`                              | optional `query`          | —                               | —                       | unset                                                        |
 
 Validation: `src/lib/env.ts` (server). Prisma reads `DATABASE_URL` through `prisma.config.ts` (dotenv).
 

@@ -11,6 +11,7 @@ export const PARENT_LINKS = [
   { href: "/parent/children", label: "Children", icon: "🧒" },
   { href: "/parent/tasks", label: "Tasks", icon: "🧹" },
   { href: "/parent/routines", label: "Routines", icon: "🌅" },
+  { href: "/parent/history", label: "History", icon: "📜" },
   { href: "/parent/goals", label: "Goals", icon: "🎯" },
   { href: "/parent/rewards", label: "Rewards", icon: "⭐" },
   { href: "/parent/settings", label: "Settings", icon: "⚙️" },

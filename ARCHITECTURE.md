@@ -53,6 +53,7 @@ flowchart LR
 | `src/game/themes/<theme>` | Authored content: the Pirate adventure definition, items, achievements, asset manifest. Seeded into the DB.                                                                            |
 | `src/game/puzzles`        | Server-side puzzle verifiers keyed by `type` (currently `sequence-match`).                                                                                                             |
 | `src/game/chapters`       | Loads chapter rows and validates their config.                                                                                                                                         |
+| `src/lib/email`           | `EmailSender` interface, the development driver (stores mail in `email_outbox`), pure message templates. Real providers plug in here (ADR 0008).                                       |
 | `src/lib`                 | Cross-cutting: `auth` (Better Auth + child sessions), `db` (Prisma client), `env`, `errors`, `validation` (Zod input schemas), `utils` (dates, source keys), `logging`.                |
 | `src/components`          | `ui` (shadcn, generated), `layout` (parent/child shells + navs), `shared` (status badge, progress bar, quest/goal cards, map marker, dialog panel, empty/loading states, action form). |
 | `prisma`                  | Schema, migrations, idempotent seed, dev-only demo seed.                                                                                                                               |
@@ -105,6 +106,17 @@ Date rules: [docs/database/TIMEZONES.md](docs/database/TIMEZONES.md).
   query with `familyId` in the `where` clause.
 - **Roles**: OWNER manages family settings and members; GUARDIAN manages children, tasks, approvals,
   rewards. Children can only submit their own occurrences/steps, play, and claim their own rewards.
+
+## Phase 2 services
+
+| Service                   | Responsibility                                                                                                                               |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maintenance.service`     | The scheduled job body: 7-day materialization per family, goal-assignment expiry, completion retry, dev-outbox pruning (idempotent).         |
+| `history.service`         | Cursor-paginated verified-completion history for parents (per child, date range) and children (own rows only).                               |
+| `invitation.service`      | Guardian invitations (hashed single-use tokens, expiry, email binding, row-locked accept), guardian removal. OWNER only.                     |
+| `task.service` (extended) | Edit/archive tasks, preset → library, edit assignment schedule/points/due time/end date. Never rewrites generated occurrences.               |
+| `routine.service` (ext.)  | Edit/archive routines, reorder steps, optional steps, assignment editing, **completion-window enforcement** (`features/routines/window.ts`). |
+| `child.service` (ext.)    | Profile/avatar edit, archive/restore, PIN reset (also revokes sessions). Archived children get no new occurrences or runs.                   |
 
 ## Service relationships and the approval pipeline
 
@@ -182,8 +194,8 @@ More: [docs/gameplay/GAME_ENGINE.md](docs/gameplay/GAME_ENGINE.md),
 
 ## Scalability considerations (planned)
 
-- Occurrence/run materialization is currently done lazily on page load for a 7-day window; a scheduled
-  job (Vercel Cron) will take over and also run `reprocessPendingCompletions`.
+- Occurrence/run materialization, goal expiry and completion retry run in the hourly Vercel Cron job
+  (`/api/cron/maintenance` → `maintenance.service.ts`, ADR 0007). Pages only create _today's_ rows as a safety net.
 - All hot queries are covered by composite indexes on `(familyId, childId, localDate)` and status.
 - Activity history and ledgers are cursor-paginated (`listLedger`).
 - Per-child row locking bounds contention to one household member; no global locks.

@@ -5,10 +5,16 @@ import { SubmitButton } from "@/components/shared/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { AVATARS } from "@/lib/avatars";
+
 import {
+  archiveChildAction,
   createChildAction,
   createFamilyAction,
+  restoreChildAction,
+  rotateFamilyCodeAction,
   setChildPinAction,
+  updateChildProfileAction,
   updateFamilySettingsAction,
 } from "../actions";
 
@@ -64,6 +70,9 @@ export function AddChildForm() {
           <Label htmlFor="displayName">Name or nickname</Label>
           <Input id="displayName" name="displayName" required maxLength={80} />
         </div>
+        <div className="space-y-1.5 sm:col-span-3">
+          <AvatarPicker />
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="pin">PIN (4–6 digits)</Label>
           <Input id="pin" name="pin" inputMode="numeric" pattern="\d{4,6}" placeholder="1234" />
@@ -88,8 +97,8 @@ export function SetPinForm({ childId }: { childId: string }) {
   return (
     <ActionForm
       action={setChildPinAction}
-      successMessage="PIN updated"
-      className="flex items-end gap-2"
+      successMessage="PIN reset. The child was signed out everywhere."
+      className="flex flex-wrap items-end gap-2"
     >
       <input type="hidden" name="childId" value={childId} />
       <div className="space-y-1">
@@ -100,13 +109,129 @@ export function SetPinForm({ childId }: { childId: string }) {
           id={`pin-${childId}`}
           name="pin"
           inputMode="numeric"
+          autoComplete="off"
           pattern="\d{4,6}"
-          className="h-8 w-28"
+          className="h-8 w-24"
+          required
+        />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor={`confirm-${childId}`} className="text-xs">
+          Confirm PIN
+        </Label>
+        <Input
+          id={`confirm-${childId}`}
+          name="confirmPin"
+          inputMode="numeric"
+          autoComplete="off"
+          pattern="\d{4,6}"
+          className="h-8 w-24"
           required
         />
       </div>
       <SubmitButton size="sm" variant="outline">
-        Set PIN
+        Reset PIN
+      </SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function AvatarPicker({
+  name = "avatarKey",
+  current,
+}: {
+  name?: string;
+  current?: string | null;
+}) {
+  return (
+    <fieldset className="space-y-1.5">
+      <legend className="text-sm font-medium">Avatar</legend>
+      <div className="flex flex-wrap gap-2">
+        {AVATARS.map((a) => (
+          <label
+            key={a.key}
+            className="flex size-11 cursor-pointer items-center justify-center rounded-lg border text-2xl has-[:checked]:border-primary has-[:checked]:bg-accent has-[:focus-visible]:ring-2"
+            title={a.label}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={a.key}
+              defaultChecked={current === a.key}
+              className="sr-only"
+              aria-label={a.label}
+            />
+            <span aria-hidden>{a.glyph}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+export function EditChildForm({
+  child,
+}: {
+  child: { id: string; displayName: string; avatarKey: string | null };
+}) {
+  return (
+    <ActionForm
+      action={updateChildProfileAction}
+      successMessage="Profile saved"
+      resetOnSuccess={false}
+    >
+      <input type="hidden" name="childId" value={child.id} />
+      <div className="space-y-1.5">
+        <Label htmlFor={`name-${child.id}`}>Name or nickname</Label>
+        <Input
+          id={`name-${child.id}`}
+          name="displayName"
+          defaultValue={child.displayName}
+          required
+          maxLength={80}
+        />
+      </div>
+      <AvatarPicker current={child.avatarKey} />
+      <SubmitButton size="sm">Save profile</SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function ArchiveChildButton({ childId, name }: { childId: string; name: string }) {
+  return (
+    <ActionForm action={archiveChildAction} className="inline" successMessage="Child archived">
+      <input type="hidden" name="childId" value={childId} />
+      <SubmitButton size="sm" variant="ghost" aria-label={`Archive ${name}`}>
+        Archive
+      </SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function RestoreChildButton({ childId, name }: { childId: string; name: string }) {
+  return (
+    <ActionForm action={restoreChildAction} className="inline" successMessage="Child restored">
+      <input type="hidden" name="childId" value={childId} />
+      <SubmitButton size="sm" variant="outline" aria-label={`Restore ${name}`}>
+        Restore
+      </SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function RotateFamilyCodeForm() {
+  return (
+    <ActionForm
+      action={rotateFamilyCodeAction}
+      successMessage="New family code created. Share it with your children."
+      resetOnSuccess={false}
+    >
+      <p className="text-sm text-muted-foreground">
+        If the code was shared by mistake, create a new one. The old code stops working right away;
+        children who are already signed in stay signed in.
+      </p>
+      <SubmitButton size="sm" variant="outline">
+        Create a new family code
       </SubmitButton>
     </ActionForm>
   );

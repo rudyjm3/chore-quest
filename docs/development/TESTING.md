@@ -26,9 +26,19 @@ sign-in + navigation + children list, parent session cannot enter child area, ch
 code + PIN, today view, adventure map markers, child session cannot enter parent area, wrong PIN,
 device hand-over signs the parent out.
 
+Phase 2 additions — unit: completion-window logic (inclusive bounds, overnight, DST, timezone), history cursor, window schema, cron route
+auth. Integration: maintenance job (7 local days per timezone, idempotent, goal expiry, completion retry, outbox pruning), task/assignment
+editing never rewrites occurrences, archived children skipped, child profiles (avatar allow-list, archive/restore, PIN reset, code rotation),
+routine editing (reorder permutations, optional steps, archive), window enforcement with a faked clock, history pagination (ties, filters,
+scoping, tampered cursor, page-size clamp), invitations (hash-only storage, expiry, revoke, wrong email, concurrent accept, OWNER only, caps,
+mail failure) and the `family_invitation` constraints. E2E: preset browser, task edit/archive, avatar + child archive/restore, routine reorder,
+history page, settings; sign-up verification, password reset and the invite → accept → remove flow (desktop project only, because auth endpoints
+are rate limited).
+
 ## Conventions
 
 - Fixtures in `tests/helpers/fixtures.ts` create families/children/tasks directly; use services for the
   behaviour under test.
 - Integration tests run serially (`fileParallelism: false`) because they share one database.
 - Keep e2e at smoke level until Phase 6; richer journeys are listed in the roadmap.
+- E2E reads emailed links from the `email_outbox` table (`tests/e2e/outbox.ts`), the same data `/dev/outbox` shows.

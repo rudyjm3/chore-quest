@@ -116,3 +116,24 @@ describe("validation schemas", () => {
     ).toBe(true);
   });
 });
+
+import { assignRoutineSchema } from "@/lib/validation/routines";
+
+describe("routine completion window validation", () => {
+  const base = {
+    familyId: "0190a000-0000-7000-8000-000000000001",
+    routineId: "0190a000-0000-7000-8000-000000000002",
+    childId: "0190a000-0000-7000-8000-000000000003",
+    schedule: { frequency: "DAILY", startDate: "2026-11-10" },
+  };
+  it("needs both bounds or neither", () => {
+    expect(assignRoutineSchema.safeParse(base).success).toBe(true);
+    expect(assignRoutineSchema.safeParse({ ...base, windowStart: "06:00" }).success).toBe(false);
+    expect(
+      assignRoutineSchema.safeParse({ ...base, windowStart: "06:00", windowEnd: "09:00" }).success,
+    ).toBe(true);
+    expect(
+      assignRoutineSchema.safeParse({ ...base, windowStart: "6am", windowEnd: "09:00" }).success,
+    ).toBe(false);
+  });
+});

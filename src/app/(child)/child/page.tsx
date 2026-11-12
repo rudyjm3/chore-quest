@@ -2,7 +2,7 @@ import { ChildTodayList } from "@/features/approvals/components/child-today";
 import { prisma } from "@/lib/db/prisma";
 import { todayIn } from "@/lib/utils/dates";
 import { requireChildContext } from "@/server/policies/context";
-import { ensureRoutineRuns, listRunsForChild } from "@/server/services/routine.service";
+import { ensureRoutineRuns, listVisibleRunsForChild } from "@/server/services/routine.service";
 import { ensureTaskOccurrences, listOccurrencesForChild } from "@/server/services/task.service";
 
 export const metadata = { title: "Today" };
@@ -33,11 +33,11 @@ export default async function ChildHomePage() {
       from: today,
       to: today,
     }),
-    listRunsForChild(prisma, {
+    listVisibleRunsForChild(prisma, {
       familyId: ctx.familyId,
       childId: ctx.childId,
-      from: today,
-      to: today,
+      today,
+      timezone: family.timezone,
     }),
   ]);
   return (
@@ -54,9 +54,14 @@ export default async function ChildHomePage() {
         name: run.assignment.routine.name,
         status: run.status,
         bonusPoints: run.bonusPointsSnapshot,
+        window:
+          run.assignment.windowStart && run.assignment.windowEnd
+            ? `${run.assignment.windowStart}–${run.assignment.windowEnd}`
+            : null,
         steps: run.assignment.routine.steps.map((step) => ({
           stepId: step.id,
           title: step.task.title,
+          isOptional: step.isOptional,
           status: run.stepProgress.find((p) => p.stepId === step.id)?.status ?? "PENDING",
         })),
       }))}

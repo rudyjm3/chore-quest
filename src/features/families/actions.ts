@@ -9,9 +9,11 @@ import { setChildSessionCookie } from "@/lib/auth/child-session-cookie";
 import { prisma } from "@/lib/db/prisma";
 import { AppError, runAction, type ActionResult } from "@/lib/errors";
 import {
+  childIdSchema,
   createChildSchema,
   createFamilySchema,
   setChildPinSchema,
+  updateChildProfileSchema,
   updateFamilySettingsSchema,
 } from "@/lib/validation/families";
 import { formToObject, parseOrThrow } from "@/lib/validation/form";
@@ -22,11 +24,18 @@ import {
 } from "@/server/policies/context";
 import { requireChildInFamily } from "@/server/policies/family-access";
 import {
+  archiveChild,
   createChild,
+  restoreChild,
   setChildPin,
   startChildSessionAsParent,
+  updateChildProfile,
 } from "@/server/services/child.service";
-import { createFamily, updateFamilySettings } from "@/server/services/family.service";
+import {
+  createFamily,
+  rotateFamilyCode,
+  updateFamilySettings,
+} from "@/server/services/family.service";
 
 export async function createFamilyAction(_prev: ActionResult<unknown> | null, formData: FormData) {
   const result = await runAction(async () => {
@@ -105,4 +114,62 @@ export async function startChildSessionAction(formData: FormData) {
   const { token, session } = await startChildSessionAsParent(prisma, ctx, childId);
   await setChildSessionCookie(token, session.expiresAt);
   redirect("/child");
+}
+
+export async function updateChildProfileAction(
+  _prev: ActionResult<unknown> | null,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const raw = formToObject(formData);
+    const input = parseOrThrow(updateChildProfileSchema, {
+      familyId: ctx.familyId,
+      childId: raw.childId,
+      displayName: raw.displayName,
+      avatarKey: raw.avatarKey ?? null,
+    });
+    await updateChildProfile(prisma, ctx, input);
+    revalidatePath("/parent/children");
+    return { ok: true };
+  });
+}
+
+export async function archiveChildAction(_prev: ActionResult<unknown> | null, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(childIdSchema, {
+      familyId: ctx.familyId,
+      childId: formData.get("childId"),
+    });
+    await archiveChild(prisma, ctx, input.childId);
+    revalidatePath("/parent/children");
+    return { ok: true };
+  });
+}
+
+export async function restoreChildAction(_prev: ActionResult<unknown> | null, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(childIdSchema, {
+      familyId: ctx.familyId,
+      childId: formData.get("childId"),
+    });
+    await restoreChild(prisma, ctx, input.childId);
+    revalidatePath("/parent/children");
+    return { ok: true };
+  });
+}
+
+export async function rotateFamilyCodeAction(
+  _prev: ActionResult<unknown> | null,
+  _formData: FormData,
+) {
+  void _formData;
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const code = await rotateFamilyCode(prisma, ctx);
+    revalidatePath("/parent", "layout");
+    return { code };
+  });
 }

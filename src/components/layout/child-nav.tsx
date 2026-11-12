@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/child", label: "Today", icon: "☀️" },
   { href: "/child/goals", label: "Goals", icon: "🎯" },
   { href: "/child/adventure", label: "Adventure", icon: "🗺️" },
+  { href: "/child/history", label: "History", icon: "📜" },
 ] as const;
 
 export function ChildNav() {

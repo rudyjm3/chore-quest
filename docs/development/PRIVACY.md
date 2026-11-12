@@ -6,19 +6,22 @@ is a claim of legal compliance.**
 
 ## Data collected about children (by design, minimal)
 
-| Data                    | Where                                                        | Why                                          | Optional |
-| ----------------------- | ------------------------------------------------------------ | -------------------------------------------- | -------- |
-| Display name / nickname | `child.displayName`                                          | Identify the child to the family             | required |
-| Avatar key              | `child.avatarKey`                                            | Cosmetic, from a fixed set                   | yes      |
-| Birth year              | `child.birthYear`                                            | Future age-appropriate content; unused today | yes      |
-| PIN hash                | `child_credential`                                           | Family-managed sign-in                       | yes      |
-| Activity data           | occurrences, completions, goals, rewards, adventure progress | Core function                                | —        |
-| Session metadata        | `child_session` (timestamps, issuing parent)                 | Security                                     | —        |
+| Data                    | Where                                                        | Why                                                               | Optional |
+| ----------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------- | -------- |
+| Display name / nickname | `child.displayName`                                          | Identify the child to the family                                  | required |
+| Avatar key              | `child.avatarKey`                                            | Cosmetic, one of 12 fixed keys (`src/lib/avatars.ts`); no uploads | yes      |
+| Birth year              | `child.birthYear`                                            | Future age-appropriate content; unused today                      | yes      |
+| PIN hash                | `child_credential`                                           | Family-managed sign-in                                            | yes      |
+| Activity data           | occurrences, completions, goals, rewards, adventure progress | Core function                                                     | —        |
+| Session metadata        | `child_session` (timestamps, issuing parent)                 | Security                                                          | —        |
 
 Not collected: child email, surname, photo, free-text about the child beyond parent-written notes,
 precise location, device identifiers beyond the session cookie. No third-party analytics or ads SDKs
 are included. Next.js anonymous telemetry applies to the build tool only (opt out with
 `npx next telemetry disable`).
+
+Phase 2 added **no new child data**. Adult data added: invitee email addresses (`family_invitation`, kept until the owner
+revokes it or the family is deleted) and, with the development email driver only, captured mail (`email_outbox`, pruned after 7 days).
 
 ## Technical controls in place
 

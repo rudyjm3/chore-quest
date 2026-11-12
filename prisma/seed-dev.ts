@@ -45,6 +45,10 @@ export async function seedDemoFamily() {
     });
     user = await prisma.user.findUniqueOrThrow({ where: { email: DEMO_PARENT.email } });
   }
+  // The demo parent signs in without opening a verification email.
+  if (!user.emailVerified) {
+    user = await prisma.user.update({ where: { id: user.id }, data: { emailVerified: true } });
+  }
 
   let family = await prisma.family.findFirst({
     where: { createdById: user.id },

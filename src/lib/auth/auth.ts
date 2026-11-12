@@ -3,6 +3,8 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 
 import { prisma } from "@/lib/db/prisma";
+import { getEmailSender } from "@/lib/email";
+import { resetPasswordMessage, verifyEmailMessage } from "@/lib/email/templates";
 
 /**
  * Better Auth server instance (parents/guardians only).
@@ -20,9 +22,24 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 10,
     maxPasswordLength: 128,
-    // Email verification + password reset delivery are wired in a later
-    // milestone once an email provider is chosen (see ROADMAP.md).
-    requireEmailVerification: false,
+    // Parents must prove they own the address before signing in (opt-out only for deployments
+    // with no email provider yet: see docs/development/EMAIL.md).
+    requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION !== "false",
+    resetPasswordTokenExpiresIn: 60 * 60, // 1 hour
+    // Delivery goes through the EmailSender abstraction. The URL is a secret: never log it.
+    sendResetPassword: async ({ user, url }) => {
+      await getEmailSender().send(resetPasswordMessage(user.email, url));
+    },
+    revokeSessionsOnPasswordReset: true,
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60 * 24, // 24 hours
+    sendVerificationEmail: async ({ user, url }) => {
+      await getEmailSender().send(verifyEmailMessage(user.email, url));
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 14, // 14 days
@@ -36,7 +53,8 @@ export const auth = betterAuth({
     customRules: {
       "/sign-in/email": { window: 60, max: 10 },
       "/sign-up/email": { window: 60, max: 5 },
-      "/forget-password": { window: 60, max: 5 },
+      "/request-password-reset": { window: 60, max: 5 },
+      "/send-verification-email": { window: 60, max: 5 },
     },
   },
   advanced: {

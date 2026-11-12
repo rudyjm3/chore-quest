@@ -7,15 +7,17 @@ dates are `date` columns.
 
 ## Migration history
 
-| #   | Migration                                       | Contents                                                                                                                                                                                                                                                                                        |
-| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `20261110161727_auth_families`                  | Better Auth tables (`user`, `session`, `account`, `verification`), `family`, `family_settings`, `family_member`, `child`, `child_credential`, `child_session`, `audit_log`                                                                                                                      |
-| 2   | `20261110161735_tasks_routines`                 | `task_preset`, `task`, `task_assignment`, `task_occurrence`, `routine_template`, `routine_template_step`, `routine`, `routine_step`, `routine_assignment`, `routine_run`, `routine_step_progress`                                                                                               |
-| 3   | `20261110161739_approvals_activity_completions` | `task_submission`, `parent_review`, `activity_completion`                                                                                                                                                                                                                                       |
-| 4   | `20261110161744_goals`                          | `goal`, `goal_assignment`, `goal_contribution`, `goal_completion`                                                                                                                                                                                                                               |
-| 5   | `20261110161748_rewards_achievements`           | `reward_wallet`, `reward_ledger_entry`, `reward_definition`, `reward_redemption`, `achievement_definition`, `earned_achievement`                                                                                                                                                                |
-| 6   | `20261110161753_adventures_inventory`           | `adventure`, `adventure_chapter`, `adventure_quest`, `quest_objective`, `puzzle_definition`, `item_definition`, `child_adventure_progress`, `child_chapter_progress`, `quest_progress`, `objective_progress`, `quest_contribution`, `puzzle_attempt`, `child_inventory_item`, `inventory_grant` |
-| 7   | `20261110161821_integrity_constraints`          | Hand-written CHECK constraints and partial unique indexes (below)                                                                                                                                                                                                                               |
+| #   | Migration                                        | Contents                                                                                                                                                                                                                                                                                        |
+| --- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `20261110161727_auth_families`                   | Better Auth tables (`user`, `session`, `account`, `verification`), `family`, `family_settings`, `family_member`, `child`, `child_credential`, `child_session`, `audit_log`                                                                                                                      |
+| 2   | `20261110161735_tasks_routines`                  | `task_preset`, `task`, `task_assignment`, `task_occurrence`, `routine_template`, `routine_template_step`, `routine`, `routine_step`, `routine_assignment`, `routine_run`, `routine_step_progress`                                                                                               |
+| 3   | `20261110161739_approvals_activity_completions`  | `task_submission`, `parent_review`, `activity_completion`                                                                                                                                                                                                                                       |
+| 4   | `20261110161744_goals`                           | `goal`, `goal_assignment`, `goal_contribution`, `goal_completion`                                                                                                                                                                                                                               |
+| 5   | `20261110161748_rewards_achievements`            | `reward_wallet`, `reward_ledger_entry`, `reward_definition`, `reward_redemption`, `achievement_definition`, `earned_achievement`                                                                                                                                                                |
+| 6   | `20261110161753_adventures_inventory`            | `adventure`, `adventure_chapter`, `adventure_quest`, `quest_objective`, `puzzle_definition`, `item_definition`, `child_adventure_progress`, `child_chapter_progress`, `quest_progress`, `objective_progress`, `quest_contribution`, `puzzle_attempt`, `child_inventory_item`, `inventory_grant` |
+| 7   | `20261110161821_integrity_constraints`           | Hand-written CHECK constraints and partial unique indexes (below)                                                                                                                                                                                                                               |
+| 8   | `20261112082815_family_invitations_email_outbox` | `family_invitation` (hashed-token guardian invites), `email_outbox` (dev email driver capture)                                                                                                                                                                                                  |
+| 9   | `20261112082817_family_invitation_constraints`   | Hand-written: guardian-only role CHECK, single-outcome CHECK, accepted-has-user CHECK, partial unique index `family_invitation_one_open_per_email`                                                                                                                                              |
 
 Workflow: edit the schema → `pnpm db:migrate --name <change>` (dev) → commit SQL → CI runs
 `prisma migrate deploy` and a drift check (`prisma migrate diff --from-config-datasource --to-schema`).
@@ -84,11 +86,21 @@ erDiagram
 - `child_session`: `tokenHash` (HMAC of the cookie token, unique), `expiresAt > createdAt` (CHECK), `revokedAt`.
 - `audit_log`: append-only; `actorType` PARENT | CHILD | SYSTEM; indexed by `(familyId, createdAt)` and `(entityType, entityId)`.
 
+- `family_invitation` (Phase 2): email-bound, single-use guardian invite. `tokenHash` is the SHA-256 of the link token (unique; the raw
+  token is never stored). Pending = `acceptedAt IS NULL AND revokedAt IS NULL AND expiresAt > now()`. CHECKs: `role = 'GUARDIAN'`,
+  not both accepted and revoked, accepted ⇒ `acceptedById`. Partial unique `(familyId, email)` while neither accepted nor revoked.
+- `email_outbox` (Phase 2): mail captured by the **development** email driver only. It has no `familyId` on purpose (auth mail exists
+  before a family does) and is pruned after 7 days by the maintenance job. Real providers never write to it.
+
 ### Tasks and routines
 
 - `task` is the family's definition; `task_assignment` is who/when; `task_occurrence` is one concrete instance:
   unique `(assignmentId, localDate)`, `pointsSnapshot` frozen at generation (edits never rewrite history).
 - `daysOfWeek` arrays are CHECKed to `⊆ {0..6}`; `endDate >= startDate`.
+- `routine_assignment.windowStart/windowEnd` ("HH:mm", household-local, both or neither) restrict when a child may complete steps; enforced in
+  `completeRoutineStep`. If end <= start the window is overnight and ends on the next local day.
+- `routine_step.isOptional` steps are not required to submit a run; `sortOrder` is rewritten via a two-phase update (negative then final) to
+  satisfy the unique index.
 - `routine_step` references `task` (unique `(routineId, taskId)` and `(routineId, sortOrder)`): no duplicated tasks.
 - `routine_run` unique `(assignmentId, localDate)`; `routine_step_progress` unique `(runId, stepId)`.
 - Global library: `task_preset` (unique `key`), `routine_template` + `routine_template_step`.

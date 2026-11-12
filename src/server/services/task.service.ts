@@ -8,7 +8,12 @@ import {
   localDateToDb,
   type LocalDate,
 } from "@/lib/utils/dates";
-import type { AssignTaskInput, CreateTaskInput, UpdateTaskInput } from "@/lib/validation/tasks";
+import type {
+  AssignTaskInput,
+  CreateTaskInput,
+  UpdateAssignmentInput,
+  UpdateTaskInput,
+} from "@/lib/validation/tasks";
 import type { ParentContext } from "@/server/policies/context";
 import { assertFamilyScope, assertPermission } from "@/server/policies/family-access";
 
@@ -70,7 +75,92 @@ export async function updateTask(db: DbClient, ctx: ParentContext, input: Update
   if (!existing) throw AppError.notFound("Task");
   const { taskId, familyId: _familyId, ...data } = input;
   void _familyId;
-  return db.task.update({ where: { id: taskId }, data });
+  // Only the task definition changes. Generated occurrences keep their `pointsSnapshot`, and
+  // assignments keep their own overrides, so past and already-materialized days are never rewritten.
+  const task = await db.task.update({ where: { id: taskId }, data });
+  await recordAudit(db, {
+    familyId: task.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action:
+      data.isArchived === undefined
+        ? "task.update"
+        : data.isArchived
+          ? "task.archive"
+          : "task.restore",
+    entityType: "Task",
+    entityId: task.id,
+    metadata: { fields: Object.keys(data) },
+  });
+  return task;
+}
+
+/** Add a global preset to the family's library with its default title/points/category. */
+export async function createTaskFromPreset(
+  db: DbClient,
+  ctx: ParentContext,
+  familyId: string,
+  presetKey: string,
+) {
+  const preset = await db.taskPreset.findUnique({ where: { key: presetKey } });
+  if (!preset || !preset.isActive) throw AppError.notFound("Task preset");
+  return createTask(db, ctx, {
+    familyId,
+    presetKey,
+    title: preset.title,
+    category: preset.category,
+    points: preset.defaultPoints,
+    approvalPolicy: "PARENT_REVIEW",
+  });
+}
+
+/** Archived tasks, for the restore list. */
+export async function listArchivedTasks(db: DbClient, familyId: string) {
+  return db.task.findMany({
+    where: { familyId, isArchived: true },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+}
+
+/**
+ * Edit an assignment's schedule, due time, end date, points override and approval policy.
+ * Only the assignment row changes: occurrences already generated are never rewritten
+ * (their `pointsSnapshot`, `dueAt` and dates stay as they were), edits apply to occurrences
+ * materialized afterwards.
+ */
+export async function updateAssignment(
+  db: DbClient,
+  ctx: ParentContext,
+  input: UpdateAssignmentInput,
+) {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canManageTasks");
+  const existing = await db.taskAssignment.findFirst({
+    where: { id: input.assignmentId, familyId: input.familyId },
+  });
+  if (!existing) throw AppError.notFound("Assignment");
+  const updated = await db.taskAssignment.update({
+    where: { id: existing.id },
+    data: {
+      frequency: input.schedule.frequency,
+      daysOfWeek: input.schedule.daysOfWeek,
+      startDate: localDateToDb(input.schedule.startDate),
+      endDate: input.schedule.endDate ? localDateToDb(input.schedule.endDate) : null,
+      dueTime: input.schedule.dueTime ?? null,
+      pointsOverride: input.pointsOverride ?? null,
+      approvalPolicyOverride: input.approvalPolicyOverride ?? null,
+    },
+  });
+  await recordAudit(db, {
+    familyId: input.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action: "task.assignment.update",
+    entityType: "TaskAssignment",
+    entityId: updated.id,
+  });
+  return updated;
 }
 
 /** Assign a task to one or more children with the same schedule. */
@@ -131,7 +221,19 @@ export async function updateAssignmentStatus(
     where: { id: assignmentId, familyId: ctx.familyId },
   });
   if (!assignment) throw AppError.notFound("Assignment");
-  return db.taskAssignment.update({ where: { id: assignment.id }, data: { status } });
+  const updated = await db.taskAssignment.update({
+    where: { id: assignment.id },
+    data: { status },
+  });
+  await recordAudit(db, {
+    familyId: ctx.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action: `task.assignment.${status.toLowerCase()}`,
+    entityType: "TaskAssignment",
+    entityId: updated.id,
+  });
+  return updated;
 }
 
 /** Edit the schedule/points of an existing assignment. Past occurrences keep their snapshot. */
@@ -168,6 +270,7 @@ export async function ensureTaskOccurrences(
     where: {
       familyId: params.familyId,
       status: "ACTIVE",
+      child: { status: "ACTIVE" }, // archived children get no new work
       ...(params.childId ? { childId: params.childId } : {}),
     },
     include: { task: { select: { points: true, isArchived: true } } },

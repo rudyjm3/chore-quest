@@ -136,3 +136,60 @@ production artwork via the asset manifest, CSP and edge rate limiting.
 **Phase 2 — Family Management**, starting with the scheduled job for occurrence/run materialization and
 pipeline retries (removes the lazy generation from page loads), then guardian invitations with an email
 provider (unblocks verification/reset), then task/assignment editing and activity history pages.
+
+---
+
+# Phase 2 — Family management
+
+Date: 2026-11-12 · Branch: `ccr-f392bd97-a14y3m` · Same environment as Phase 1 (Node 22, pnpm 10.28, PostgreSQL 16).
+
+## What changed
+
+1. **Scheduled jobs**: `GET /api/cron/maintenance` (Vercel Cron, hourly, `vercel.json`) behind `CRON_SECRET` (constant-time Bearer check,
+   503 when unset). `maintenance.service` materializes 7 household-local days of occurrences and runs per family, expires past-due goal
+   assignments, retries `PENDING`/`FAILED` completions and prunes dev mail. Everything is idempotent and family-scoped; one failing family does
+   not stop the rest. Pages now only create _today's_ rows. ADR 0007.
+2. **Task library and assignments**: edit/archive/restore tasks, preset browser grouped by category, edit assignment schedule, points, due time,
+   end date, approval; pause/resume/archive. Generated occurrences are never rewritten (tested). Audit entries added.
+3. **Child profiles**: fixed 12-avatar set (no uploads), archive/restore UI, PIN reset with confirmation that also revokes the child's sessions
+   and unlocks them, OWNER-only family code rotation. No new child data. **Bug fixed**: the generators ignored child status, so archived
+   children kept receiving occurrences/runs (regression test fails on the old code).
+4. **Routines**: reorder steps (two-phase update under the unique index), optional steps (at least one required), edit/archive/restore, assignment
+   editing, completion windows (`windowStart`/`windowEnd`, household time, overnight and DST aware) enforced in `completeRoutineStep`.
+5. **Activity history**: keyset-paginated parent page (child + date-range filter) and child "my history"; page size clamped at 50; tampered cursors
+   fall back to the first page; child id always comes from the session.
+6. **Guardian invitations and auth emails**: `EmailSender` interface with a development driver (stores in `email_outbox`, logs only the kind),
+   Better Auth email verification (required by default) and password reset, invitations with hashed single-use tokens, 7-day expiry, email
+   binding, row-locked accept, OWNER-only invite/list/revoke/remove, audit entries. ADR 0008, `docs/development/EMAIL.md`.
+7. Housekeeping: CI action bumps (`checkout`, `setup-node`, `pnpm/action-setup` → v5, Node 24 runtimes), new env vars wired everywhere
+   (`CRON_SECRET`, `EMAIL_DRIVER`, `REQUIRE_EMAIL_VERIFICATION`), `seed-dev` marks the demo parent as verified.
+
+## Database
+
+Two migrations: `family_invitations_email_outbox` (tables `family_invitation`, `email_outbox`) and the hand-written
+`family_invitation_constraints` (guardian-only CHECK, single-outcome CHECK, accepted-has-user CHECK, partial unique index for one open invite per
+family+email), each with a violating test in `schema-integrity.test.ts`. Drift check: "No difference detected".
+
+## Test counts
+
+| Suite       | Phase 1 | Phase 2 | Notes                                                                                                 |
+| ----------- | ------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| Unit        | 48      | 66      | window logic, cursor, schema refinements, cron route auth                                             |
+| Integration | 31      | 71      | +maintenance, task/child/routine management, history, invitations, 4 new constraint tests             |
+| E2E         | 22      | 45      | 41 run + 4 auth-flow scenarios skipped on the mobile project (rate-limited endpoints; run on desktop) |
+
+`pnpm check`, `pnpm format:check` and `pnpm test:e2e` all pass, also from a fresh clone following the README.
+
+## Known limitations
+
+- **No real email provider.** Verification, reset and invitation mail is captured, not delivered (by design: nothing paid was signed up for).
+  Deployments without a provider must set `REQUIRE_EMAIL_VERIFICATION=false`; owners can share the one-time invite link by hand.
+- Adding/removing steps of an _existing_ routine is not supported (reorder/optional/rename are). Step-progress rows are per run, so it needs a
+  reconciliation design.
+- Editing an assignment affects only occurrences generated afterwards. A future occurrence already materialized for a day that the new schedule
+  no longer includes stays on the calendar until completed or skipped (deliberate: no rewriting of generated rows).
+- The cron job is hourly; a brand-new assignment's future days appear on the next run (today appears immediately via the page safety net).
+- Invitation links use `NEXT_PUBLIC_APP_URL`, which Next inlines at build time; set it correctly for the build.
+- `email_outbox` stores live links when the dev driver is used in production; the viewer is disabled there and rows expire after 7 days.
+- The parent bottom navigation now has 9 items; how it fits on very small phones was not visually checked.
+- Still deferred from the Phase 2 wish-list: parent "sign out everywhere", per-child due times beyond a per-assignment time.
