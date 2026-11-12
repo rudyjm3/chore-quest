@@ -93,3 +93,24 @@ export const generateOccurrencesSchema = z.object({
   from: localDateSchema,
   to: localDateSchema,
 });
+
+/** Full replacement of an assignment's schedule/points/approval. Empty optional fields clear them. */
+export const updateAssignmentSchema = z.object({
+  familyId: uuidSchema,
+  assignmentId: uuidSchema,
+  schedule: scheduleSchema,
+  pointsOverride: pointsSchema.optional(),
+  approvalPolicyOverride: approvalPolicySchema.optional(),
+});
+export type UpdateAssignmentInput = z.infer<typeof updateAssignmentSchema>;
+
+export const archiveTaskSchema = z.object({
+  familyId: uuidSchema,
+  taskId: uuidSchema,
+  archived: z.boolean(),
+});
+
+export const addPresetSchema = z.object({
+  familyId: uuidSchema,
+  presetKey: z.string().min(1).max(64),
+});
