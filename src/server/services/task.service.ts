@@ -270,6 +270,7 @@ export async function ensureTaskOccurrences(
     where: {
       familyId: params.familyId,
       status: "ACTIVE",
+      child: { status: "ACTIVE" }, // archived children get no new work
       ...(params.childId ? { childId: params.childId } : {}),
     },
     include: { task: { select: { points: true, isArchived: true } } },

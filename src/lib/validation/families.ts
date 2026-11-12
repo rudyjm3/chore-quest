@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { AVATAR_KEYS } from "@/lib/avatars";
+
 import { dayOfWeekSchema, shortTextSchema, timeZoneSchema, uuidSchema } from "./common";
 
 export const createFamilySchema = z.object({
@@ -25,7 +27,7 @@ export const childPinSchema = z.string().regex(/^\d{4,6}$/, "PIN must be 4 to 6 
 export const createChildSchema = z.object({
   familyId: uuidSchema,
   displayName: shortTextSchema,
-  avatarKey: z.string().max(64).optional(),
+  avatarKey: z.enum(AVATAR_KEYS).optional(),
   birthYear: z
     .number()
     .int()
@@ -36,11 +38,27 @@ export const createChildSchema = z.object({
 });
 export type CreateChildInput = z.infer<typeof createChildSchema>;
 
-export const setChildPinSchema = z.object({
+export const setChildPinSchema = z
+  .object({
+    familyId: uuidSchema,
+    childId: uuidSchema,
+    pin: childPinSchema,
+    confirmPin: z.string().optional(),
+  })
+  .refine((v) => v.confirmPin === undefined || v.confirmPin === v.pin, {
+    path: ["confirmPin"],
+    message: "PINs do not match",
+  });
+
+export const updateChildProfileSchema = z.object({
   familyId: uuidSchema,
   childId: uuidSchema,
-  pin: childPinSchema,
+  displayName: shortTextSchema,
+  avatarKey: z.enum(AVATAR_KEYS).nullable(),
 });
+export type UpdateChildProfileInput = z.infer<typeof updateChildProfileSchema>;
+
+export const childIdSchema = z.object({ familyId: uuidSchema, childId: uuidSchema });
 
 export const childSignInSchema = z.object({
   familyCode: z.string().trim().toUpperCase().min(4).max(12),

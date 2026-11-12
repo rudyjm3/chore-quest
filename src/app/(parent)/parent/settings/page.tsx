@@ -1,6 +1,9 @@
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FamilySettingsForm } from "@/features/families/components/family-forms";
+import {
+  FamilySettingsForm,
+  RotateFamilyCodeForm,
+} from "@/features/families/components/family-forms";
 import { prisma } from "@/lib/db/prisma";
 import { requireParentContext } from "@/server/policies/context";
 import { getFamilyOverview } from "@/server/services/family.service";
@@ -38,6 +41,16 @@ export default async function SettingsPage() {
           )}
         </CardContent>
       </Card>
+      {ctx.role === "OWNER" ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Child sign-in code</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RotateFamilyCodeForm />
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Adults in this family</CardTitle>

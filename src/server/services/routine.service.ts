@@ -105,6 +105,7 @@ export async function ensureRoutineRuns(
     where: {
       familyId: params.familyId,
       status: "ACTIVE",
+      child: { status: "ACTIVE" }, // archived children get no new work
       ...(params.childId ? { childId: params.childId } : {}),
     },
     include: { routine: { include: { steps: true } } },

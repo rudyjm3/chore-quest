@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/shared/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { avatarGlyph } from "@/lib/avatars";
 
 import { childSignInAction, lookupFamilyAction } from "../actions";
 
@@ -70,6 +71,9 @@ export function ChildSignIn() {
                 className="size-4"
                 required
               />
+              <span aria-hidden className="text-2xl">
+                {avatarGlyph(child.avatarKey)}
+              </span>
               {child.displayName}
             </label>
           ))}

@@ -121,3 +121,30 @@ export async function addGuardian(db: DbClient, ctx: ParentContext, userId: stri
   });
   return member;
 }
+
+/**
+ * Replace the child sign-in code (OWNER only). The old code stops working immediately; children
+ * already signed in keep their sessions. Use after a code is shared by mistake.
+ */
+export async function rotateFamilyCode(db: DbClient, ctx: ParentContext) {
+  assertPermission(ctx, "canManageFamily");
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const code = generateFamilyCode();
+    const taken = await db.family.findUnique({
+      where: { childLoginCode: code },
+      select: { id: true },
+    });
+    if (taken) continue;
+    await db.family.update({ where: { id: ctx.familyId }, data: { childLoginCode: code } });
+    await recordAudit(db, {
+      familyId: ctx.familyId,
+      actorType: "PARENT",
+      actorUserId: ctx.userId,
+      action: "family.code.rotate",
+      entityType: "Family",
+      entityId: ctx.familyId,
+    });
+    return code;
+  }
+  throw AppError.conflict("Could not allocate a unique family code; please retry");
+}
