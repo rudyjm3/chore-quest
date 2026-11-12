@@ -20,7 +20,9 @@ export interface TodayRun {
   name: string;
   status: string;
   bonusPoints: number;
-  steps: Array<{ stepId: string; title: string; status: string }>;
+  /** Household-local completion window, e.g. "06:00–09:00". */
+  window: string | null;
+  steps: Array<{ stepId: string; title: string; status: string; isOptional: boolean }>;
 }
 
 export function ChildTodayList({
@@ -89,6 +91,7 @@ export function ChildTodayList({
                   >
                     <span className={step.status === "DONE" ? "line-through opacity-60" : ""}>
                       {step.title}
+                      {step.isOptional ? " (bonus step)" : ""}
                     </span>
                     {step.status === "DONE" ||
                     run.status === "SUBMITTED" ||
@@ -110,6 +113,7 @@ export function ChildTodayList({
                   </li>
                 ))}
               </ul>
+              {run.window ? <p className="text-xs font-bold">Open between {run.window}</p> : null}
               <p className="text-xs text-muted-foreground">
                 Finish every step to earn {run.bonusPoints} bonus points.
               </p>

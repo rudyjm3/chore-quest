@@ -5,9 +5,27 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { AppError, runAction, type ActionResult } from "@/lib/errors";
 import { formToObject, parseOrThrow } from "@/lib/validation/form";
-import { assignRoutineSchema, createRoutineSchema } from "@/lib/validation/routines";
+import {
+  archiveRoutineSchema,
+  assignRoutineSchema,
+  createRoutineSchema,
+  moveRoutineStepSchema,
+  routineAssignmentStatusSchema,
+  setStepOptionalSchema,
+  updateRoutineAssignmentSchema,
+  updateRoutineSchema,
+} from "@/lib/validation/routines";
 import { requireParentContext } from "@/server/policies/context";
-import { assignRoutine, createRoutine } from "@/server/services/routine.service";
+import {
+  archiveRoutine,
+  assignRoutine,
+  createRoutine,
+  moveRoutineStep,
+  setRoutineStepOptional,
+  updateRoutine,
+  updateRoutineAssignment,
+  updateRoutineAssignmentStatus,
+} from "@/server/services/routine.service";
 import { createTask } from "@/server/services/task.service";
 
 /** Create a routine from selected family tasks, or from a global template (creating tasks from presets as needed). */
@@ -63,6 +81,8 @@ export async function assignRoutineAction(_prev: ActionResult<unknown> | null, f
       childId: raw.childId,
       bonusPoints: raw.bonusPoints ?? 0,
       approvalPolicy: raw.approvalPolicy ?? "PARENT_REVIEW",
+      windowStart: raw.windowStart,
+      windowEnd: raw.windowEnd,
       schedule: {
         frequency: raw.frequency,
         daysOfWeek: raw.daysOfWeek ?? [],
@@ -71,6 +91,100 @@ export async function assignRoutineAction(_prev: ActionResult<unknown> | null, f
       },
     });
     await assignRoutine(prisma, ctx, input);
+    revalidatePath("/parent/routines");
+    return { ok: true };
+  });
+}
+
+type Prev = ActionResult<unknown> | null;
+
+export async function updateRoutineAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(updateRoutineSchema, {
+      ...formToObject(formData),
+      familyId: ctx.familyId,
+    });
+    await updateRoutine(prisma, ctx, input);
+    revalidatePath("/parent/routines");
+    return { ok: true };
+  });
+}
+
+export async function moveRoutineStepAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(moveRoutineStepSchema, {
+      ...formToObject(formData),
+      familyId: ctx.familyId,
+    });
+    await moveRoutineStep(prisma, ctx, input.routineId, input.stepId, input.direction);
+    revalidatePath("/parent/routines");
+    return { ok: true };
+  });
+}
+
+export async function setStepOptionalAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(setStepOptionalSchema, {
+      familyId: ctx.familyId,
+      routineId: formData.get("routineId"),
+      stepId: formData.get("stepId"),
+      isOptional: formData.get("isOptional") === "true",
+    });
+    await setRoutineStepOptional(prisma, ctx, input.routineId, input.stepId, input.isOptional);
+    revalidatePath("/parent/routines");
+    return { ok: true };
+  });
+}
+
+export async function archiveRoutineAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(archiveRoutineSchema, {
+      familyId: ctx.familyId,
+      routineId: formData.get("routineId"),
+      archived: formData.get("archived") === "true",
+    });
+    await archiveRoutine(prisma, ctx, input.routineId, input.archived);
+    revalidatePath("/parent/routines");
+    return { ok: true };
+  });
+}
+
+export async function updateRoutineAssignmentAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const raw = formToObject(formData, { numbers: ["bonusPoints"], numberArrays: ["daysOfWeek"] });
+    const input = parseOrThrow(updateRoutineAssignmentSchema, {
+      familyId: ctx.familyId,
+      assignmentId: raw.assignmentId,
+      bonusPoints: raw.bonusPoints ?? 0,
+      approvalPolicy: raw.approvalPolicy ?? "PARENT_REVIEW",
+      windowStart: raw.windowStart,
+      windowEnd: raw.windowEnd,
+      schedule: {
+        frequency: raw.frequency,
+        daysOfWeek: raw.daysOfWeek ?? [],
+        startDate: raw.startDate,
+        endDate: raw.endDate,
+      },
+    });
+    await updateRoutineAssignment(prisma, ctx, input);
+    revalidatePath("/parent/routines");
+    return { ok: true };
+  });
+}
+
+export async function routineAssignmentStatusAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(routineAssignmentStatusSchema, {
+      ...formToObject(formData),
+      familyId: ctx.familyId,
+    });
+    await updateRoutineAssignmentStatus(prisma, ctx, input.assignmentId, input.status);
     revalidatePath("/parent/routines");
     return { ok: true };
   });

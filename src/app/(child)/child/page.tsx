@@ -54,9 +54,14 @@ export default async function ChildHomePage() {
         name: run.assignment.routine.name,
         status: run.status,
         bonusPoints: run.bonusPointsSnapshot,
+        window:
+          run.assignment.windowStart && run.assignment.windowEnd
+            ? `${run.assignment.windowStart}–${run.assignment.windowEnd}`
+            : null,
         steps: run.assignment.routine.steps.map((step) => ({
           stepId: step.id,
           title: step.task.title,
+          isOptional: step.isOptional,
           status: run.stepProgress.find((p) => p.stepId === step.id)?.status ?? "PENDING",
         })),
       }))}

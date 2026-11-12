@@ -1,9 +1,15 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { checkCompletionWindow, windowOf } from "@/features/routines/window";
 import { scheduledDatesBetween } from "@/features/tasks/recurrence";
 import type { DbClient } from "@/lib/db/prisma";
 import { AppError } from "@/lib/errors";
 import { dbToLocalDate, localDateToDb, type LocalDate } from "@/lib/utils/dates";
-import type { AssignRoutineInput, CreateRoutineInput } from "@/lib/validation/routines";
+import type {
+  AssignRoutineInput,
+  CreateRoutineInput,
+  UpdateRoutineAssignmentInput,
+  UpdateRoutineInput,
+} from "@/lib/validation/routines";
 import type { ChildContext, ParentContext } from "@/server/policies/context";
 import { assertFamilyScope, assertPermission } from "@/server/policies/family-access";
 
@@ -67,6 +73,7 @@ export async function assignRoutine(db: DbClient, ctx: ParentContext, input: Ass
     where: { id: input.routineId, familyId: input.familyId },
   });
   if (!routine) throw AppError.notFound("Routine");
+  if (routine.isArchived) throw AppError.invalidState("Restore this routine before assigning it");
   const child = await db.child.findFirst({
     where: { id: input.childId, familyId: input.familyId, status: "ACTIVE" },
   });
@@ -83,6 +90,8 @@ export async function assignRoutine(db: DbClient, ctx: ParentContext, input: Ass
       endDate: input.schedule.endDate ? localDateToDb(input.schedule.endDate) : null,
       bonusPoints: input.bonusPoints,
       approvalPolicy: input.approvalPolicy,
+      windowStart: input.windowStart ?? null,
+      windowEnd: input.windowEnd ?? null,
     },
     update: {
       status: "ACTIVE",
@@ -92,8 +101,198 @@ export async function assignRoutine(db: DbClient, ctx: ParentContext, input: Ass
       endDate: input.schedule.endDate ? localDateToDb(input.schedule.endDate) : null,
       bonusPoints: input.bonusPoints,
       approvalPolicy: input.approvalPolicy,
+      windowStart: input.windowStart ?? null,
+      windowEnd: input.windowEnd ?? null,
     },
   });
+}
+
+export async function listArchivedRoutines(db: DbClient, familyId: string) {
+  return db.routine.findMany({
+    where: { familyId, isArchived: true },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+}
+
+async function requireRoutine(db: DbClient, ctx: ParentContext, routineId: string) {
+  assertPermission(ctx, "canManageTasks");
+  const routine = await db.routine.findFirst({
+    where: { id: routineId, familyId: ctx.familyId },
+    include: { steps: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!routine) throw AppError.notFound("Routine");
+  return routine;
+}
+
+function auditRoutine(
+  db: DbClient,
+  ctx: ParentContext,
+  action: string,
+  entityType: string,
+  entityId: string,
+  metadata?: Record<string, unknown>,
+) {
+  return recordAudit(db, {
+    familyId: ctx.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action,
+    entityType,
+    entityId,
+    metadata,
+  });
+}
+
+export async function updateRoutine(db: DbClient, ctx: ParentContext, input: UpdateRoutineInput) {
+  assertFamilyScope(ctx, input.familyId);
+  const routine = await requireRoutine(db, ctx, input.routineId);
+  const updated = await db.routine.update({
+    where: { id: routine.id },
+    data: { name: input.name, description: input.description ?? null },
+  });
+  await auditRoutine(db, ctx, "routine.update", "Routine", routine.id);
+  return updated;
+}
+
+export async function archiveRoutine(
+  db: DbClient,
+  ctx: ParentContext,
+  routineId: string,
+  archived: boolean,
+) {
+  const routine = await requireRoutine(db, ctx, routineId);
+  await db.routine.update({ where: { id: routine.id }, data: { isArchived: archived } });
+  await auditRoutine(
+    db,
+    ctx,
+    archived ? "routine.archive" : "routine.restore",
+    "Routine",
+    routine.id,
+  );
+}
+
+/**
+ * Set the exact step order. `orderedStepIds` must be a permutation of the routine's steps.
+ * The (routineId, sortOrder) unique index is checked per statement, so steps are first parked on
+ * negative values and then given their final positions, all in one transaction.
+ */
+export async function reorderRoutineSteps(
+  db: DbClient,
+  ctx: ParentContext,
+  routineId: string,
+  orderedStepIds: string[],
+) {
+  const routine = await requireRoutine(db, ctx, routineId);
+  const current = new Set(routine.steps.map((s) => s.id));
+  if (
+    orderedStepIds.length !== current.size ||
+    new Set(orderedStepIds).size !== current.size ||
+    !orderedStepIds.every((id) => current.has(id))
+  ) {
+    throw AppError.validation("The new order must list every step of the routine exactly once");
+  }
+  await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "routine" WHERE id = ${routine.id}::uuid FOR UPDATE`;
+    for (const [index, id] of orderedStepIds.entries()) {
+      await tx.routineStep.update({ where: { id }, data: { sortOrder: -(index + 1) } });
+    }
+    for (const [index, id] of orderedStepIds.entries()) {
+      await tx.routineStep.update({ where: { id }, data: { sortOrder: index + 1 } });
+    }
+  });
+  await auditRoutine(db, ctx, "routine.steps.reorder", "Routine", routine.id);
+}
+
+export async function moveRoutineStep(
+  db: DbClient,
+  ctx: ParentContext,
+  routineId: string,
+  stepId: string,
+  direction: "up" | "down",
+) {
+  const routine = await requireRoutine(db, ctx, routineId);
+  const ids = routine.steps.map((s) => s.id);
+  const index = ids.indexOf(stepId);
+  if (index === -1) throw AppError.notFound("Routine step");
+  const target = direction === "up" ? index - 1 : index + 1;
+  if (target < 0 || target >= ids.length) return;
+  [ids[index], ids[target]] = [ids[target], ids[index]];
+  await reorderRoutineSteps(db, ctx, routineId, ids);
+}
+
+/**
+ * Mark a step optional (the run can be submitted without it) or required again.
+ * A routine must keep at least one required step. Takes effect for runs that are not yet finished.
+ */
+export async function setRoutineStepOptional(
+  db: DbClient,
+  ctx: ParentContext,
+  routineId: string,
+  stepId: string,
+  isOptional: boolean,
+) {
+  const routine = await requireRoutine(db, ctx, routineId);
+  const step = routine.steps.find((s) => s.id === stepId);
+  if (!step) throw AppError.notFound("Routine step");
+  if (isOptional) {
+    const otherRequired = routine.steps.filter((s) => s.id !== stepId && !s.isOptional).length;
+    if (otherRequired === 0) {
+      throw AppError.invalidState("A routine needs at least one required step");
+    }
+  }
+  await db.routineStep.update({ where: { id: step.id }, data: { isOptional } });
+  await auditRoutine(db, ctx, "routine.step.optional", "RoutineStep", step.id, { isOptional });
+}
+
+/** Edit an assignment's schedule, bonus, approval policy and completion window. Existing runs keep their snapshot. */
+export async function updateRoutineAssignment(
+  db: DbClient,
+  ctx: ParentContext,
+  input: UpdateRoutineAssignmentInput,
+) {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canManageTasks");
+  const existing = await db.routineAssignment.findFirst({
+    where: { id: input.assignmentId, familyId: input.familyId },
+  });
+  if (!existing) throw AppError.notFound("Routine assignment");
+  const updated = await db.routineAssignment.update({
+    where: { id: existing.id },
+    data: {
+      frequency: input.schedule.frequency,
+      daysOfWeek: input.schedule.daysOfWeek,
+      startDate: localDateToDb(input.schedule.startDate),
+      endDate: input.schedule.endDate ? localDateToDb(input.schedule.endDate) : null,
+      bonusPoints: input.bonusPoints,
+      approvalPolicy: input.approvalPolicy,
+      windowStart: input.windowStart ?? null,
+      windowEnd: input.windowEnd ?? null,
+    },
+  });
+  await auditRoutine(db, ctx, "routine.assignment.update", "RoutineAssignment", updated.id);
+  return updated;
+}
+
+export async function updateRoutineAssignmentStatus(
+  db: DbClient,
+  ctx: ParentContext,
+  assignmentId: string,
+  status: "ACTIVE" | "PAUSED" | "ARCHIVED",
+) {
+  assertPermission(ctx, "canManageTasks");
+  const existing = await db.routineAssignment.findFirst({
+    where: { id: assignmentId, familyId: ctx.familyId },
+  });
+  if (!existing) throw AppError.notFound("Routine assignment");
+  await db.routineAssignment.update({ where: { id: existing.id }, data: { status } });
+  await auditRoutine(
+    db,
+    ctx,
+    `routine.assignment.${status.toLowerCase()}`,
+    "RoutineAssignment",
+    existing.id,
+  );
 }
 
 /** Materialize routine runs (and their step progress rows) for a date range. Idempotent. */
@@ -200,6 +399,27 @@ export async function completeRoutineStep(
     if (!run) throw AppError.notFound("Routine run");
     if (run.status === "APPROVED" || run.status === "SUBMITTED") {
       throw AppError.invalidState("This routine is already finished");
+    }
+    // Completion window (household-local), enforced here so the client cannot bypass it.
+    const window = windowOf(run.assignment.windowStart, run.assignment.windowEnd);
+    if (window) {
+      const family = await tx.family.findUniqueOrThrow({
+        where: { id: ctx.familyId },
+        select: { timezone: true },
+      });
+      const check = checkCompletionWindow({
+        now: new Date(),
+        localDate: dbToLocalDate(run.localDate),
+        window,
+        timeZone: family.timezone,
+      });
+      if (!check.open) {
+        throw AppError.invalidState(
+          check.reason === "too-early"
+            ? `This routine opens at ${check.opens}. Come back then!`
+            : `This routine closed at ${check.closes}. Try again tomorrow!`,
+        );
+      }
     }
     const progress = run.stepProgress.find((p) => p.stepId === stepId);
     if (!progress) throw AppError.notFound("Routine step");
