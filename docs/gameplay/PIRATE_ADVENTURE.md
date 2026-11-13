@@ -47,7 +47,9 @@ Locations: Pip the Parrot (NPC), Feather Grove (quest board), Compass Shrine (pu
   `gold-doubloon` display-only), ships (`ship-starter` granted at start; explorer 150c, voyager 400c,
   captain 800c, legendary 1500c, each gated by a chapter), upgrades (`upgrade-patched-sail` 40c,
   `upgrade-parrot-perch` 90c, `upgrade-brass-cannon` 200c), cosmetics (`cosmetic-captain-hat` 60c).
-  Purchases go through `purchaseItem` (idempotent, never overdraws).
+  Purchases go through `purchaseItem` (idempotent, never overdraws). The child **Supply shop** (`/child/supplies`) lists every item with a
+  `costCoins`, with states _available_, _can't afford_, _locked_ (ship tier / required item / chapter) and _already have the maximum_; the same
+  rules are enforced again on the server (ADR 0012). The **Treasure chest** (`/child/inventory`) shows owned items grouped by type, read-only.
 - Achievements: Deckhand (1 approved activity), Able Seaman (10), Ship Shape (1 routine), Anchors Aweigh
   (Home Port complete), True North (compass puzzle).
 
@@ -56,3 +58,21 @@ Locations: Pip the Parrot (NPC), Feather Grove (quest board), Compass Shrine (pu
 Polished colourful 3D-cartoon illustration, tropical pirate environments, wooden/parchment UI, big
 readable markers, friendly characters, clear distinction between playable locations and decoration. All
 current assets are flat-colour placeholders flagged `placeholder: true` in the manifest.
+
+## Home Port scene: design note (not built yet)
+
+Phase 4 delivered the supply shop and the treasure chest. The rest of the Home Port scene is designed here for the next slice; none of it is built.
+
+- **Quest board.** Read-only list of the chapter's `ACTIVE` quests and their objectives from `getAdventureState` (title, progress `current/target`,
+  reward preview). No new tables. Tapping a quest shows its description; progress comes only from the engine.
+- **Crew camp (cosmetic equip/unequip).** Selection lives in `child_adventure_progress.state` as `{ equipped: { head?: itemKey, sail?: itemKey, deck?: itemKey } }`
+  validated by a Zod schema in `src/game/schemas`. A service action (`equipCosmetic`) locks the child row, checks the child owns the item and the slot
+  matches `config.slot`, then writes the small state. It is never read for rewards or progress; animation state (bobbing, hover) stays in
+  client-only Zustand.
+- **Lighthouse.** A once-per-day "look out to sea" interaction that surfaces the next unlock hint for the current chapter; purely read-only
+  text from chapter config (`hint` field), so it needs a config key and validation, no state.
+- **Hidden cove.** Gated by an achievement or collectible (`requiresItemKey`, reusing ADR 0012 rules); the first visit grants a small one-time
+  reward through `grantItem` with a `sourceKey` per child and cove. Needs an ADR before it is built because it adds a reward source.
+- **Pip dialogue.** Static, theme-authored lines keyed by situation (`greeting`, `quest-complete`, `low-supplies`), selected by pure functions over engine state.
+  No free text, no external services, no child data.
+- All artwork continues to go through the asset manifest with placeholders.

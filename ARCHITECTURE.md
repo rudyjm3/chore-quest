@@ -129,6 +129,14 @@ Date rules: [docs/database/TIMEZONES.md](docs/database/TIMEZONES.md).
 | `achievement.service`     | Child gallery: earned vs locked; locked entries expose only a `hint`, never the description or criteria.                                                                                                             |
 | `audit.service` (ext.)    | `listAuditLog` for OWNER/GUARDIAN: family-scoped, cursor pagination, action-prefix and local date-range filters, readable summaries from `features/audit/summary.ts` (pure).                                         |
 
+### Phase 3 follow-ups and Phase 4 start
+
+- `routine.service` (ext.): `addRoutineStep`, `removeRoutineStep` (steps are retired, never deleted; unfinished runs from today on are reconciled, lock order routine → run; ADR 0011). `approval.service.removeRoutineStepAndSettle` auto-approves runs completed by a removal under `AUTO_APPROVE`.
+- `reward.service` (ext.): `cancelRedemption` (child cancels an own `REQUESTED` request; ADR 0010 lock order child → reward).
+- `notification.service` (ext.): `pruneNotifications`, called from the maintenance job (read 90 d / unread 180 d, bounded batches).
+- `inventory.service` (ext.): `listShopItems`, `loadShopContext`; `purchaseItem` enforces the pure rules in `src/features/shop/shop-state.ts` (ADR 0012).
+- `src/lib/utils/dates.ts`: `formatLocalDateTime` for household-local timestamps.
+
 ## Service relationships and the approval pipeline
 
 ```mermaid
