@@ -272,3 +272,46 @@ describe("resolving a redemption", () => {
     ).rejects.toThrow(/refund_needs_debit/);
   });
 });
+
+describe("requests created before reservation existed (legacy rows)", () => {
+  async function legacy(balance: number) {
+    const s = await setup(balance, { costPoints: 30 });
+    const r = await db.rewardRedemption.create({
+      data: {
+        familyId: s.family.id,
+        childId: s.kid.child.id,
+        rewardDefinitionId: s.definition.id,
+        costPoints: 30,
+      },
+    });
+    return { ...s, r };
+  }
+
+  it("denying an unreserved request refunds nothing and leaves stock alone", async () => {
+    const s = await legacy(50);
+    const denied = await resolveRedemption(db, s.ctx, { redemptionId: s.r.id, decision: "DENIED" });
+    expect(denied.status).toBe("DENIED");
+    expect(denied.refundEntryId).toBeNull();
+    expect(await points(s.kid.child.id)).toBe(50);
+  });
+
+  it("approving an unreserved request charges it then, once, or fails if unaffordable", async () => {
+    const s = await legacy(50);
+    const approved = await resolveRedemption(db, s.ctx, {
+      redemptionId: s.r.id,
+      decision: "APPROVED",
+    });
+    expect(approved.ledgerEntryId).not.toBeNull();
+    expect(await points(s.kid.child.id)).toBe(20);
+    await resolveRedemption(db, s.ctx, { redemptionId: s.r.id, decision: "APPROVED" });
+    expect(await points(s.kid.child.id)).toBe(20);
+
+    const poor = await legacy(10);
+    await expect(
+      resolveRedemption(db, poor.ctx, { redemptionId: poor.r.id, decision: "APPROVED" }),
+    ).rejects.toThrow(/Insufficient/);
+    expect((await db.rewardRedemption.findUniqueOrThrow({ where: { id: poor.r.id } })).status).toBe(
+      "REQUESTED",
+    );
+  });
+});

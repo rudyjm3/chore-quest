@@ -385,9 +385,27 @@ export async function resolveRedemption(
       );
     }
 
+    // Requests made before points were reserved at request time (ADR 0010) have no debit entry.
+    // Approving one charges it now; denying one has nothing to refund and no stock to restore.
+    const unreserved = redemption.ledgerEntryId === null && redemption.costPoints > 0;
     const now = new Date();
     let refundEntryId: string | null = null;
-    if (input.decision === "DENIED") {
+    let debitEntryId: string | null = null;
+    if (input.decision === "APPROVED" && unreserved) {
+      const { entry } = await postLedgerEntry(tx, {
+        familyId: ctx.familyId,
+        childId: redemption.childId,
+        currency: "POINTS",
+        amount: -redemption.costPoints,
+        sourceType: "REDEMPTION",
+        sourceId: redemption.id,
+        sourceKey: sourceKeys.redemption(redemption.id),
+        description: `Reward: “${title}”`,
+        createdByUserId: ctx.userId,
+      });
+      debitEntryId = entry.id;
+    }
+    if (input.decision === "DENIED" && !unreserved) {
       if (redemption.costPoints > 0) {
         const { entry } = await postLedgerEntry(tx, {
           familyId: ctx.familyId,
@@ -419,6 +437,7 @@ export async function resolveRedemption(
           ? {}
           : { resolvedAt: now, resolvedByUserId: ctx.userId }),
         ...(refundEntryId ? { refundEntryId } : {}),
+        ...(debitEntryId ? { ledgerEntryId: debitEntryId } : {}),
       },
     });
     await recordAudit(tx, {
@@ -440,7 +459,8 @@ export async function resolveRedemption(
             : `“${title}” is ready — enjoy!`,
       body:
         input.decision === "DENIED"
-          ? `Your ${redemption.costPoints} points are back.${input.note ? ` ${input.note}` : ""}`
+          ? `${unreserved ? "" : `Your ${redemption.costPoints} points are back.`}${input.note ? ` ${input.note}` : ""}`.trim() ||
+            undefined
           : input.note,
       entityType: "RewardRedemption",
       entityId: updated.id,

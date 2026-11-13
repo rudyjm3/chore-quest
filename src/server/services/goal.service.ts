@@ -401,60 +401,73 @@ export async function updateGoalAssignment(
 ) {
   assertFamilyScope(ctx, input.familyId);
   assertPermission(ctx, "canManageTasks");
-  const existing = await db.goalAssignment.findFirst({
+  const probe = await db.goalAssignment.findFirst({
     where: { id: input.assignmentId, familyId: ctx.familyId },
-    include: { goal: true },
+    select: { childId: true },
   });
-  if (!existing) throw AppError.notFound("Goal assignment");
-  if (existing.status === "COMPLETED") {
-    throw AppError.invalidState("A completed goal cannot be edited");
-  }
-  const datesChanging = input.startDate !== undefined || input.endDate !== undefined;
-  if (datesChanging && existing.periodKey !== "") {
-    throw AppError.invalidState("Weekly goals follow the calendar week; their dates cannot change");
-  }
+  if (!probe) throw AppError.notFound("Goal assignment");
 
-  const startDate = input.startDate ?? dbToLocalDate(existing.startDate);
-  const endDate =
-    input.endDate !== undefined
-      ? input.endDate
-      : existing.endDate
-        ? dbToLocalDate(existing.endDate)
-        : null;
-  if (endDate && endDate < startDate) {
-    throw AppError.validation("The end date cannot be before the start date");
-  }
+  // Status check, edit and repair share one transaction under the child lock, so an approval
+  // cannot complete the assignment between the check and the update.
+  return db.$transaction(async (tx) => {
+    await lockChildRow(tx, probe.childId);
+    const existing = await tx.goalAssignment.findFirst({
+      where: { id: input.assignmentId, familyId: ctx.familyId },
+      include: { goal: true },
+    });
+    if (!existing) throw AppError.notFound("Goal assignment");
+    if (existing.status === "COMPLETED") {
+      throw AppError.invalidState("A completed goal cannot be edited");
+    }
+    const datesChanging = input.startDate !== undefined || input.endDate !== undefined;
+    if (datesChanging && existing.periodKey !== "") {
+      throw AppError.invalidState(
+        "Weekly goals follow the calendar week; their dates cannot change",
+      );
+    }
 
-  await db.goalAssignment.update({
-    where: { id: existing.id },
-    data: {
-      ...(datesChanging
-        ? {
-            startDate: localDateToDb(startDate),
-            endDate: endDate ? localDateToDb(endDate) : null,
-          }
-        : {}),
-      targetOverride: input.targetCount === undefined ? undefined : input.targetCount,
-      ...(existing.status === "EXPIRED" && (!endDate || endDate >= input.today)
-        ? { status: "ACTIVE" as const }
-        : {}),
-    },
+    const startDate = input.startDate ?? dbToLocalDate(existing.startDate);
+    const endDate =
+      input.endDate !== undefined
+        ? input.endDate
+        : existing.endDate
+          ? dbToLocalDate(existing.endDate)
+          : null;
+    if (endDate && endDate < startDate) {
+      throw AppError.validation("The end date cannot be before the start date");
+    }
+
+    await tx.goalAssignment.update({
+      where: { id: existing.id },
+      data: {
+        ...(datesChanging
+          ? {
+              startDate: localDateToDb(startDate),
+              endDate: endDate ? localDateToDb(endDate) : null,
+            }
+          : {}),
+        targetOverride: input.targetCount === undefined ? undefined : input.targetCount,
+        ...(existing.status === "EXPIRED" && (!endDate || endDate >= input.today)
+          ? { status: "ACTIVE" as const }
+          : {}),
+      },
+    });
+    await recordAudit(tx, {
+      familyId: ctx.familyId,
+      actorType: "PARENT",
+      actorUserId: ctx.userId,
+      action: "goal.assignment.update",
+      entityType: "GoalAssignment",
+      entityId: existing.id,
+      metadata: {
+        goal: existing.goal.title,
+        startDate,
+        endDate,
+        targetCount: input.targetCount ?? null,
+      },
+    });
+    return repairGoalAssignment(tx, ctx.familyId, existing.id);
   });
-  await recordAudit(db, {
-    familyId: ctx.familyId,
-    actorType: "PARENT",
-    actorUserId: ctx.userId,
-    action: "goal.assignment.update",
-    entityType: "GoalAssignment",
-    entityId: existing.id,
-    metadata: {
-      goal: existing.goal.title,
-      startDate,
-      endDate,
-      targetCount: input.targetCount ?? null,
-    },
-  });
-  return repairGoalAssignment(db, ctx.familyId, existing.id);
 }
 
 export interface RepairResult {

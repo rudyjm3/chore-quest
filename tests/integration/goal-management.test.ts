@@ -323,3 +323,33 @@ describe("progress repair", () => {
     expect(await db.goalCompletion.count({ where: { goalAssignmentId: assignment.id } })).toBe(1);
   });
 });
+
+describe("assignment edits versus concurrent approvals", () => {
+  it("an edit that started before a completion cannot reopen or retarget the completed assignment", async () => {
+    const s = await setup({ targetCount: 1, rewardPoints: 0 });
+    const assignment = await db.goalAssignment.findFirstOrThrow({ where: { goalId: s.goal.id } });
+
+    let edit: Promise<unknown> = Promise.resolve();
+    // Hold the child lock like an in-flight approval, start the edit, then complete the
+    // assignment before releasing the lock. The edit must re-check the status under the lock.
+    await db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "child" WHERE id = ${s.child.id}::uuid FOR UPDATE`;
+      edit = updateGoalAssignment(db, s.ctx, {
+        familyId: s.family.id,
+        assignmentId: assignment.id,
+        targetCount: 5,
+        today: "2026-11-10",
+      }).catch((error: unknown) => error);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await tx.goalAssignment.update({
+        where: { id: assignment.id },
+        data: { status: "COMPLETED", completedAt: new Date(), progressCount: 1 },
+      });
+    });
+    const outcome = await edit;
+    expect(outcome).toBeInstanceOf(Error);
+    expect(String(outcome)).toMatch(/completed goal cannot be edited/);
+    const after = await db.goalAssignment.findUniqueOrThrow({ where: { id: assignment.id } });
+    expect(after).toMatchObject({ status: "COMPLETED", targetOverride: null });
+  });
+});
