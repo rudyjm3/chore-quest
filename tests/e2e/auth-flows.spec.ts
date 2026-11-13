@@ -113,6 +113,25 @@ test.describe("email verification, password reset and guardian invitations", () 
     await guestPage.goto(invitePath);
     await expect(guestPage.getByTestId("invite-invalid")).toBeVisible();
 
+    // "Sign out everywhere" ends the account's sessions on every device, immediately.
+    const other = await browser.newContext(ANONYMOUS);
+    const otherPage = await other.newPage();
+    await otherPage.goto("/sign-in");
+    await otherPage.getByLabel("Email").fill(NEW_PARENT.email);
+    await otherPage.getByLabel("Password").fill(NEW_PARENT.password);
+    await otherPage.getByRole("button", { name: "Sign in" }).click();
+    await otherPage.waitForURL("**/parent");
+    await guestPage.goto("/parent/settings");
+    await guestPage.getByRole("button", { name: "Sign out everywhere" }).click();
+    await expect(guestPage).toHaveURL(/\/sign-in/);
+    await otherPage.goto("/parent");
+    await expect(otherPage).toHaveURL(/\/sign-in/);
+    await other.close();
+    await guestPage.getByLabel("Email").fill(NEW_PARENT.email);
+    await guestPage.getByLabel("Password").fill(NEW_PARENT.password);
+    await guestPage.getByRole("button", { name: "Sign in" }).click();
+    await guestPage.waitForURL("**/parent");
+
     // Owner removes the guardian again so the demo family stays tidy.
     await ownerPage.goto("/parent/settings");
     await ownerPage.getByRole("button", { name: /^Remove E2E Guardian/ }).click();

@@ -177,6 +177,32 @@ export function SignOutButton({ className }: { className?: string }) {
   );
 }
 
+/** Revokes every session of this parent account (all browsers and devices), then returns to sign-in. */
+export function SignOutEverywhereButton() {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={pending}
+      onClick={async () => {
+        setPending(true);
+        const { error } = await authClient.revokeSessions();
+        if (error) {
+          setPending(false);
+          toast.error(error.message ?? "Could not sign out everywhere");
+          return;
+        }
+        router.push("/sign-in");
+        router.refresh();
+      }}
+    >
+      {pending ? "Signing out…" : "Sign out everywhere"}
+    </Button>
+  );
+}
+
 export function ForgotPasswordForm() {
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);

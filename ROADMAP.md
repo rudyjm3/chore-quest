@@ -37,14 +37,18 @@ Depends on: Phase 1. Delivered in the Phase 2 branch; see `docs/BUILD_HEALTH_REP
 
 ## Phase 3 — Goals and Rewards 🟡
 
-Depends on: Phase 2 (history pages and scheduled job are done).
+Depends on: Phase 2 (history pages and scheduled job are done). Delivered on the Phase 3 branch; see `docs/BUILD_HEALTH_REPORT.md`.
 
-- 🟡 Goal management UI (create/assign done; edit, archive, reset rules pending)
-- 🟡 Goal expiry job ✅ (Phase 2 cron); streak recomputation from contributions ⬜
-- 🟡 Approvals: bulk approve, notes/photos on submissions, notifications
-- 🟡 Reward catalogue + redemption UI (services exist: `createRewardDefinition`, `requestRedemption`, `resolveRedemption`)
-- ⬜ Achievements gallery for children
-- ⬜ Parent-facing audit log view
+- ✅ Goal management: edit goal and per-child assignment (dates, target override), archive/restore, explicit reset rules and expiry-job interaction (`docs/gameplay/GOALS.md`), idempotent progress repair from `goal_contribution`
+- ✅ Approvals: bulk approve (one transaction per item, per-item results), parent note visible to the child, in-app notifications for parents and children with cursor pagination (ADR 0009)
+- ⬜ Photos on submissions: **deliberately deferred** until `docs/development/PRIVACY.md` records a privacy review for storing children's images
+- ✅ Reward catalogue (create, edit, archive, price, optional stock), child reward shop, parent resolve flow; points and stock reserved at request, refunded on denial (ADR 0010)
+- ✅ Achievements gallery for children (locked = hint only)
+- ✅ Parent audit log view (OWNER/GUARDIAN, cursor, action-prefix and date-range filters, readable summaries)
+- ✅ Parent "sign out everywhere" (Phase 2 carry-over); server session reads now bypass the cookie cache so revocation is immediate
+- ⬜ Real email provider (Phase 2 carry-over): needs an account and API key from a provider; nothing was signed up for. Steps in `docs/development/EMAIL.md`
+- ⬜ Adding/removing steps of an existing routine (Phase 2 carry-over): needs an ADR for reconciling existing `routine_step_progress` rows first
+- ⬜ Not in scope, noted for later: child cancelling their own reward request, notification email/push, retention job for notifications
 
 ## Phase 4 — Pirate Adventure 🟡
 

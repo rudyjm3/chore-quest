@@ -213,3 +213,62 @@ describe("family_invitation constraints (migration family_invitation_constraints
     );
   });
 });
+
+describe("phase 3 constraints", () => {
+  it("a notification needs exactly one recipient", async () => {
+    const { family, user } = await createFamilyFixture(db);
+    const { child } = await createChildFixture(db, family.id);
+    const base = { familyId: family.id, kind: "SUBMISSION_PENDING" as const, title: "t" };
+    await expect(db.notification.create({ data: base })).rejects.toThrow(/one_recipient/);
+    await expect(
+      db.notification.create({
+        data: { ...base, recipientUserId: user.id, recipientChildId: child.id },
+      }),
+    ).rejects.toThrow(/one_recipient/);
+    await expect(
+      db.notification.create({ data: { ...base, recipientUserId: user.id } }),
+    ).resolves.toBeTruthy();
+  });
+
+  it("notification dedupe keys are unique per recipient, not global", async () => {
+    const a = await createFamilyFixture(db);
+    const b = await createFamilyFixture(db);
+    const make = (familyId: string, userId: string) =>
+      db.notification.create({
+        data: {
+          familyId,
+          recipientUserId: userId,
+          kind: "SUBMISSION_PENDING",
+          title: "t",
+          dedupeKey: "k",
+        },
+      });
+    await make(a.family.id, a.user.id);
+    await expect(make(a.family.id, a.user.id)).rejects.toThrow(/Unique/);
+    await expect(make(b.family.id, b.user.id)).resolves.toBeTruthy();
+  });
+
+  it("reward stock cannot be negative and a goal assignment target must be positive", async () => {
+    const { family } = await createFamilyFixture(db);
+    const { child } = await createChildFixture(db, family.id);
+    await expect(
+      db.rewardDefinition.create({
+        data: { familyId: family.id, title: "r", costPoints: 5, stock: -1 },
+      }),
+    ).rejects.toThrow(/stock_nonneg/);
+    const goal = await db.goal.create({
+      data: { familyId: family.id, title: "g", type: "TOTAL_COUNT", targetCount: 3 },
+    });
+    await expect(
+      db.goalAssignment.create({
+        data: {
+          familyId: family.id,
+          goalId: goal.id,
+          childId: child.id,
+          startDate: localDateToDb("2026-11-01"),
+          targetOverride: 0,
+        },
+      }),
+    ).rejects.toThrow(/target_override/);
+  });
+});
