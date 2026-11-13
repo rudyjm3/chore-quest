@@ -1,7 +1,7 @@
 # Privacy review: photos on chore submissions
 
-**Status: proposed, not approved.** Nothing described here is built. No upload control, storage bucket, image column or vendor account exists.
-The owner must complete the sign-off checklist (section 10) before any implementation starts. This document is a draft for that decision, not
+**Status: review document approved by the owner on 2026-11-13; feature not yet cleared to build.** The owner's approval covers this review as the basis for deciding. The go/no-go checklist (section 10) is still open, so no upload control, storage bucket, image column or vendor account may be added until the owner completes it. Nothing described here is built. No upload control, storage bucket, image column or vendor account exists.
+The owner must complete the sign-off checklist (section 10) before any implementation starts. This document is the basis for that decision, not
 legal advice; items marked **[legal]** need review by a qualified privacy lawyer.
 
 ## 1. Purpose and the case for / against

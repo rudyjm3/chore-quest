@@ -31,8 +31,8 @@ reward/chore titles and notes. Parent notes on approvals are shown only to the c
 Attaching photos to chore submissions is **not implemented**. Storing children's images (and, by accident, their surroundings, faces or
 location metadata) requires a documented privacy review first: legal basis and parental consent under COPPA/GDPR-K, storage location and
 region, EXIF stripping, retention and deletion, who can view, moderation, and a processor assessment of the storage vendor. Until that
-review is recorded in this file, submissions carry text notes only and the child UI has no upload control. The draft review (status
-**proposed, not approved**) is in [`PHOTO_REVIEW.md`](./PHOTO_REVIEW.md).
+review is recorded in this file, submissions carry text notes only and the child UI has no upload control. The review document is approved by the owner (2026-11-13), but its go/no-go checklist is still open, so the feature stays blocked. The review (status
+**approved as a document; build not cleared**) is in [`PHOTO_REVIEW.md`](./PHOTO_REVIEW.md).
 
 ## Technical controls in place
 

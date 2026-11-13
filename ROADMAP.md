@@ -41,7 +41,7 @@ Depends on: Phase 2 (history pages and scheduled job are done). Delivered on the
 
 - ✅ Goal management: edit goal and per-child assignment (dates, target override), archive/restore, explicit reset rules and expiry-job interaction (`docs/gameplay/GOALS.md`), idempotent progress repair from `goal_contribution`
 - ✅ Approvals: bulk approve (one transaction per item, per-item results), parent note visible to the child, in-app notifications for parents and children with cursor pagination (ADR 0009)
-- ⬜ Photos on submissions: **deliberately deferred** until `docs/development/PRIVACY.md` records a privacy review for storing children's images (draft: [`PHOTO_REVIEW.md`](docs/development/PHOTO_REVIEW.md), proposed, not approved; nothing built)
+- ⬜ Photos on submissions: **deliberately deferred** until `docs/development/PRIVACY.md` records a privacy review for storing children's images (draft: [`PHOTO_REVIEW.md`](docs/development/PHOTO_REVIEW.md), review approved by the owner, go/no-go checklist still open; nothing built)
 - ✅ Reward catalogue (create, edit, archive, price, optional stock), child reward shop, parent resolve flow; points and stock reserved at request, refunded on denial (ADR 0010)
 - ✅ Achievements gallery for children (locked = hint only)
 - ✅ Parent audit log view (OWNER/GUARDIAN, cursor, action-prefix and date-range filters, readable summaries)
