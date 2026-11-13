@@ -53,3 +53,7 @@ export const parentAdjustmentSchema = z.object({
   idempotencyKey: z.string().trim().min(8).max(128),
 });
 export type ParentAdjustmentInput = z.infer<typeof parentAdjustmentSchema>;
+
+export const cancelRedemptionSchema = z.object({
+  redemptionId: uuidSchema,
+});
