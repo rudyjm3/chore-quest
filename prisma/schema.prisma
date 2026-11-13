@@ -569,11 +569,14 @@ model RoutineStep {
   task       Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   sortOrder  Int
   isOptional Boolean @default(false)
+  /// Set when the step is removed from the routine (ADR 0011). Retired steps keep their progress rows as history.
+  /// Uniqueness of (routineId, sortOrder) and (routineId, taskId) over active steps is enforced by partial
+  /// unique indexes in the `routine_step_retire` migration (Prisma cannot express them).
+  retiredAt  DateTime?
 
   stepProgress RoutineStepProgress[]
 
-  @@unique([routineId, sortOrder])
-  @@unique([routineId, taskId])
+  @@index([routineId, retiredAt])
   @@map("routine_step")
 }
 

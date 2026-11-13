@@ -60,12 +60,17 @@ export default async function ChildHomePage() {
           run.assignment.windowStart && run.assignment.windowEnd
             ? `${run.assignment.windowStart}–${run.assignment.windowEnd}`
             : null,
-        steps: run.assignment.routine.steps.map((step) => ({
-          stepId: step.id,
-          title: step.task.title,
-          isOptional: step.isOptional,
-          status: run.stepProgress.find((p) => p.stepId === step.id)?.status ?? "PENDING",
-        })),
+        // A run's steps are its progress rows; retired steps only stay visible on finished runs.
+        steps: run.stepProgress
+          .filter(
+            (p) => !p.step.retiredAt || run.status === "SUBMITTED" || run.status === "APPROVED",
+          )
+          .map((p) => ({
+            stepId: p.stepId,
+            title: p.step.task.title,
+            isOptional: p.step.isOptional,
+            status: p.status,
+          })),
       }))}
     />
   );

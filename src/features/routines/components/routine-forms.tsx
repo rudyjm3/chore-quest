@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { ScheduleFields } from "@/features/tasks/components/task-forms";
 
 import {
+  addRoutineStepAction,
   archiveRoutineAction,
   assignRoutineAction,
   createRoutineAction,
   moveRoutineStepAction,
+  removeRoutineStepAction,
   routineAssignmentStatusAction,
   setStepOptionalAction,
   updateRoutineAction,
@@ -248,6 +250,30 @@ export function StepControls({
           {isOptional ? "Optional" : "Required"}
         </SubmitButton>
       </ActionForm>
+      <details className="relative">
+        <summary
+          className="flex min-h-9 cursor-pointer items-center rounded-md border px-2 text-xs text-destructive"
+          aria-label={`Remove ${title}`}
+        >
+          Remove
+        </summary>
+        <ActionForm
+          action={removeRoutineStepAction}
+          successMessage="Step removed"
+          className="absolute right-0 z-10 mt-1 w-64 space-y-2 rounded-md border bg-background p-3 shadow-md"
+        >
+          <input type="hidden" name="routineId" value={routineId} />
+          <input type="hidden" name="stepId" value={stepId} />
+          <p className="text-xs text-foreground">
+            Remove “{title}”? Today’s and upcoming unfinished routines stop asking for it. Finished
+            and approved routines keep their history. If a child already did every other step today,
+            the routine is sent in for review.
+          </p>
+          <SubmitButton size="sm" variant="destructive" pendingText="Removing…">
+            Yes, remove step
+          </SubmitButton>
+        </ActionForm>
+      </details>
     </span>
   );
 }
@@ -358,5 +384,46 @@ export function RoutineAssignmentStatusButtons({
         </ActionForm>
       ) : null}
     </span>
+  );
+}
+
+export function AddRoutineStepForm({
+  routineId,
+  tasks,
+}: {
+  routineId: string;
+  tasks: Array<{ id: string; title: string }>;
+}) {
+  if (tasks.length === 0) {
+    return <p className="text-xs">Every task in your library is already a step.</p>;
+  }
+  return (
+    <ActionForm action={addRoutineStepAction} successMessage="Step added">
+      <input type="hidden" name="routineId" value={routineId} />
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+        <div className="space-y-1.5">
+          <Label htmlFor={`as-${routineId}`}>Add a step</Label>
+          <select id={`as-${routineId}`} name="taskId" className={select} required defaultValue="">
+            <option value="" disabled>
+              Choose a task…
+            </option>
+            {tasks.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+        </div>
+        <label className="flex min-h-9 items-center gap-2 text-sm">
+          <input type="checkbox" name="isOptional" /> Optional
+        </label>
+        <SubmitButton size="sm" pendingText="Adding…">
+          Add step
+        </SubmitButton>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Added to today’s and upcoming unfinished routines. Routines already sent in are not changed.
+      </p>
+    </ActionForm>
   );
 }

@@ -2,6 +2,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  AddRoutineStepForm,
   ArchiveRoutineButton,
   AssignRoutineForm,
   CreateRoutineForm,
@@ -86,6 +87,17 @@ export default async function RoutinesPage() {
                   </li>
                 ))}
               </ol>
+              <details>
+                <summary className="cursor-pointer text-primary">Add a step</summary>
+                <div className="mt-2">
+                  <AddRoutineStepForm
+                    routineId={routine.id}
+                    tasks={tasks
+                      .filter((t) => !routine.steps.some((s) => s.taskId === t.id))
+                      .map((t) => ({ id: t.id, title: t.title }))}
+                  />
+                </div>
+              </details>
               <details>
                 <summary className="cursor-pointer text-primary">Edit routine</summary>
                 <div className="mt-2">
