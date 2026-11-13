@@ -17,7 +17,7 @@ rewriting history, losing a pending parent review, or letting a child race a par
 - Uniqueness moves to **partial unique indexes over active steps**: `(routineId, sortOrder)` and `(routineId, taskId)` `WHERE retiredAt IS NULL`.
   Re-adding a retired task creates a new step row (the old one stays as history). Gaps in `sortOrder` are allowed; new steps are
   appended at `max(active sortOrder) + 1`; reorder still takes a permutation of the active steps.
-- **Which runs change.** Only *unfinished* runs (`PENDING`, `IN_PROGRESS`, `REJECTED`) with `localDate >= family-local today`. Today's and future
+- **Which runs change.** Only _unfinished_ runs (`PENDING`, `IN_PROGRESS`, `REJECTED`) with `localDate >= family-local today`. Today's and future
   materialized runs are reconciled; past unfinished runs are effectively missed and stay as they were.
 - **Adding a step** inserts a `PENDING` progress row for each such run (`createMany skipDuplicates`). `SUBMITTED` and `APPROVED` runs get no row: they
   are finished as the child saw them, a pending parent review is never reopened and an approved completion is never invalidated.
@@ -26,7 +26,7 @@ rewriting history, losing a pending parent review, or letting a child race a par
   the run's rows whose step is active: if the child had already done every remaining required step, the run is submitted in the same
   transaction (parents notified; `AUTO_APPROVE` assignments are then auto-approved by `approval.service` exactly as for a normal last tick).
   Otherwise it stays `IN_PROGRESS`/`PENDING`. A retired step can no longer be ticked.
-- **Invariants.** A routine always keeps at least one active *required* step (so removing the last required step is rejected, as is making it optional,
+- **Invariants.** A routine always keeps at least one active _required_ step (so removing the last required step is rejected, as is making it optional,
   see `setRoutineStepOptional`). Task must belong to the family and not be archived; a task cannot appear twice among active steps.
 - **Completion windows** are a property of the assignment and are untouched. A newly added step must be done inside the same window.
 - **Activity history** is unaffected: `ActivityCompletion` rows reference the run, not individual steps; display of a finished run lists the steps it
