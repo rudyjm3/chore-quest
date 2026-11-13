@@ -258,3 +258,25 @@ single-balance race test fail (checked by mutation).
   humanised key.
 - "Sign out everywhere" does not write an audit entry (the revocation happens inside Better Auth's endpoint).
 - The audit and notification pages show UTC timestamps; household-local formatting is not done.
+
+## Phase 3 follow-ups and Phase 4 start
+
+**What changed**
+
+- Routines: steps can be added to and removed from an existing routine. Steps are retired (`routine_step.retiredAt`), never deleted; unfinished runs from today on are reconciled; submitted and approved runs are untouched (ADR 0011, migration `routine_step_retire` with partial unique indexes).
+- Rewards: a child can cancel their own `REQUESTED` redemption (refund, stock, parent notification, audit; lock order child → reward).
+- Audit and notification pages show household-local times (`formatLocalDateTime`).
+- Maintenance job prunes notifications (read > 90 d, unread > 180 d, bounded batches); migration adds `notification.createdAt` index.
+- Child supply shop (`/child/supplies`) and treasure chest (`/child/inventory`); child nav gained a "More" menu. `purchaseItem` now enforces unlock requirements and family scope on the server (ADR 0012).
+- Photo privacy review drafted (`docs/development/PHOTO_REVIEW.md`, proposed, not approved).
+
+**Test counts** (`pnpm check`): unit 84, integration 160 (Phase 3: 75 / 114). E2E 51 passed, 10 skipped on the mobile project by design (new: routine step add/remove, supply shop purchase).
+
+**Known limitations / left out**
+
+- Photos on submissions: nothing built; the owner must approve `PHOTO_REVIEW.md` first.
+- Real email provider: out of scope for this work.
+- `NOTIFICATION_RETENTION_DAYS` override not added (would need the full env-var checklist); windows are constants.
+- B3 not built: quest board, crew camp, lighthouse, hidden cove and Pip dialogue are a design note in `docs/gameplay/PIRATE_ADVENTURE.md`.
+- Removing a step from a run that is still untouched leaves it open; a step added after a run was submitted applies only from the next unfinished run.
+- The "fresh clone into a scratch directory following the README" step was not done in this session.

@@ -6,17 +6,21 @@ import { prisma } from "@/lib/db/prisma";
 import { AppError, runAction, type ActionResult } from "@/lib/errors";
 import { formToObject, parseOrThrow } from "@/lib/validation/form";
 import {
+  addRoutineStepSchema,
   archiveRoutineSchema,
   assignRoutineSchema,
   createRoutineSchema,
   moveRoutineStepSchema,
+  removeRoutineStepSchema,
   routineAssignmentStatusSchema,
   setStepOptionalSchema,
   updateRoutineAssignmentSchema,
   updateRoutineSchema,
 } from "@/lib/validation/routines";
 import { requireParentContext } from "@/server/policies/context";
+import { removeRoutineStepAndSettle } from "@/server/services/approval.service";
 import {
+  addRoutineStep,
   archiveRoutine,
   assignRoutine,
   createRoutine,
@@ -187,5 +191,34 @@ export async function routineAssignmentStatusAction(_prev: Prev, formData: FormD
     await updateRoutineAssignmentStatus(prisma, ctx, input.assignmentId, input.status);
     revalidatePath("/parent/routines");
     return { ok: true };
+  });
+}
+
+export async function addRoutineStepAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(addRoutineStepSchema, {
+      routineId: formData.get("routineId"),
+      taskId: formData.get("taskId"),
+      isOptional: formData.get("isOptional") === "on",
+    });
+    const result = await addRoutineStep(prisma, ctx, input);
+    revalidatePath("/parent/routines");
+    revalidatePath("/parent");
+    return { runsUpdated: result.runsUpdated };
+  });
+}
+
+export async function removeRoutineStepAction(_prev: Prev, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const input = parseOrThrow(removeRoutineStepSchema, {
+      routineId: formData.get("routineId"),
+      stepId: formData.get("stepId"),
+    });
+    const result = await removeRoutineStepAndSettle(prisma, ctx, input);
+    revalidatePath("/parent/routines");
+    revalidatePath("/parent");
+    return { runsSubmitted: result.submitted.length };
   });
 }

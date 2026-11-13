@@ -22,6 +22,8 @@ dates are `date` columns.
 | 11  | `20261113090100_phase3_constraints`                      | Hand-written: notification has exactly one recipient, `stock >= 0`, refund requires debit                                                                                                                                                                                                       |
 | 12  | `20261113090200_routine_run_review_note`                 | `routine_run.reviewNote` (parent note visible to the child)                                                                                                                                                                                                                                     |
 | 13  | `20261113090300_goal_assignment_target_override`         | `goal_assignment.targetOverride` + CHECK `> 0`                                                                                                                                                                                                                                                  |
+| 14  | `20261113100000_routine_step_retire`                     | `routine_step.retiredAt` (ADR 0011); `(routineId, sortOrder)` and `(routineId, taskId)` uniqueness becomes partial (`WHERE retiredAt IS NULL`)                                                                                                                                                  |
+| 15  | `20261113110000_notification_created_at_index`           | Index on `notification.createdAt` for the retention job (ADR 0009)                                                                                                                                                                                                                              |
 
 Workflow: edit the schema → `pnpm db:migrate --name <change>` (dev) → commit SQL → CI runs
 `prisma migrate deploy` and a drift check (`prisma migrate diff --from-config-datasource --to-schema`).
@@ -105,7 +107,7 @@ erDiagram
   `completeRoutineStep`. If end <= start the window is overnight and ends on the next local day.
 - `routine_step.isOptional` steps are not required to submit a run; `sortOrder` is rewritten via a two-phase update (negative then final) to
   satisfy the unique index.
-- `routine_step` references `task` (unique `(routineId, taskId)` and `(routineId, sortOrder)`): no duplicated tasks.
+- `routine_step` references `task`; among **active** steps (`retiredAt IS NULL`) `(routineId, taskId)` and `(routineId, sortOrder)` are unique (partial indexes): no duplicated tasks. Steps are retired, never deleted (ADR 0011); a run's steps are its `routine_step_progress` rows.
 - `routine_run` unique `(assignmentId, localDate)`; `routine_step_progress` unique `(runId, stepId)`.
 - Global library: `task_preset` (unique `key`), `routine_template` + `routine_template_step`.
 

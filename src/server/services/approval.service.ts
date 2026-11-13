@@ -8,7 +8,7 @@ import { assertFamilyScope, assertPermission } from "@/server/policies/family-ac
 
 import { recordAudit } from "./audit.service";
 import { notifyChild, notifyParents } from "./notification.service";
-import { completeRoutineStep } from "./routine.service";
+import { completeRoutineStep, removeRoutineStep } from "./routine.service";
 import { processCompletion, type ProcessResult } from "./progression.service";
 
 type Tx = Prisma.TransactionClient;
@@ -372,7 +372,15 @@ export async function reviewRoutineRun(
 ) {
   assertFamilyScope(ctx, input.familyId);
   assertPermission(ctx, "canApprove");
+  // Lock order is routine → run (ADR 0011), so a step edit cannot slip between a rejection and its reconcile.
+  const pre = await db.routineRun.findFirst({
+    where: { id: input.runId, familyId: ctx.familyId },
+    select: { assignment: { select: { routineId: true } } },
+  });
   const outcome = await db.$transaction(async (tx) => {
+    if (pre) {
+      await tx.$queryRaw`SELECT id FROM "routine" WHERE id = ${pre.assignment.routineId}::uuid FOR UPDATE`;
+    }
     await lockRoutineRun(tx, input.runId);
     const run = await tx.routineRun.findFirst({
       where: { id: input.runId, familyId: ctx.familyId },
@@ -391,6 +399,19 @@ export async function reviewRoutineRun(
       await tx.routineStepProgress.updateMany({
         where: { runId: run.id },
         data: { status: "PENDING", completedAt: null },
+      });
+      // The run is open again, so it follows the routine's current steps (ADR 0011): any active
+      // step it was submitted without (added or re-created since) gets a PENDING row.
+      const activeSteps = await tx.routineStep.findMany({
+        where: {
+          retiredAt: null,
+          routine: { assignments: { some: { runs: { some: { id: run.id } } } } },
+        },
+        select: { id: true },
+      });
+      await tx.routineStepProgress.createMany({
+        data: activeSteps.map((step) => ({ runId: run.id, stepId: step.id })),
+        skipDuplicates: true,
       });
       await tx.routineRun.update({
         where: { id: run.id },
@@ -528,4 +549,27 @@ async function lockOccurrence(tx: Tx, occurrenceId: string) {
     where: { id: occurrenceId },
     include: { assignment: { include: { task: true } } },
   });
+}
+
+/**
+ * Retire a routine step (ADR 0011). Runs that become complete because of the removal are submitted
+ * by the routine service; those on AUTO_APPROVE assignments are approved here, as for a last tick.
+ */
+export async function removeRoutineStepAndSettle(
+  db: DbClient,
+  ctx: ParentContext,
+  input: { routineId: string; stepId: string },
+) {
+  const result = await removeRoutineStep(db, ctx, input);
+  let autoApproved = 0;
+  for (const run of result.submitted) {
+    if (run.approvalPolicy !== "AUTO_APPROVE") continue;
+    const approved = await db.$transaction(async (tx) => {
+      await lockRoutineRun(tx, run.runId);
+      return approveRoutineRunTx(tx, { runId: run.runId, reviewerUserId: null, isAutomatic: true });
+    });
+    await processCompletion(db, approved.completionId);
+    autoApproved += 1;
+  }
+  return { ...result, autoApproved };
 }

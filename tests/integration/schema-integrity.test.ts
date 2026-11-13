@@ -272,3 +272,31 @@ describe("phase 3 constraints", () => {
     ).rejects.toThrow(/target_override/);
   });
 });
+
+describe("routine step partial unique indexes (ADR 0011)", () => {
+  it("active steps are unique by order and by task; retired steps free both", async () => {
+    const { family } = await createFamilyFixture(db);
+    const [a, b, c] = [
+      await createTaskFixture(db, family.id, { title: "A" }),
+      await createTaskFixture(db, family.id, { title: "B" }),
+      await createTaskFixture(db, family.id, { title: "C" }),
+    ];
+    const routine = await db.routine.create({ data: { familyId: family.id, name: "R" } });
+    const first = await db.routineStep.create({
+      data: { routineId: routine.id, taskId: a.id, sortOrder: 1 },
+    });
+    await expect(
+      db.routineStep.create({ data: { routineId: routine.id, taskId: b.id, sortOrder: 1 } }),
+    ).rejects.toThrow(/Unique/);
+    await expect(
+      db.routineStep.create({ data: { routineId: routine.id, taskId: a.id, sortOrder: 2 } }),
+    ).rejects.toThrow(/Unique/);
+    await db.routineStep.update({ where: { id: first.id }, data: { retiredAt: new Date() } });
+    await expect(
+      db.routineStep.create({ data: { routineId: routine.id, taskId: a.id, sortOrder: 1 } }),
+    ).resolves.toBeTruthy();
+    await expect(
+      db.routineStep.create({ data: { routineId: routine.id, taskId: c.id, sortOrder: 1 } }),
+    ).rejects.toThrow(/Unique/);
+  });
+});

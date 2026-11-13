@@ -26,3 +26,4 @@ dashboard). That puts write load on reads, and nothing retried stuck completions
 - Assigning a task does not instantly create next week's occurrences; the next hourly run (or the
   today-only net) does. Acceptable for chores; revisit if parents expect instant future views.
 - The same function can be invoked from any other scheduler (GitHub Actions, a worker) unchanged.
+- The job also prunes old notifications (ADR 0009) and the dev email outbox, bounded per run; the result includes `notificationsPruned` and `outboxPruned`.

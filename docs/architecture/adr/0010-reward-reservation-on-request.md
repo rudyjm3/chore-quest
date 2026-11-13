@@ -28,5 +28,5 @@ and a child shop, so those races became reachable.
 
 - A child's visible balance drops immediately when they ask, which matches "set aside" in the child copy.
 - Zero-priced rewards are rejected at validation (price ≥ 1), so there is always a ledger entry to refund.
-- Child cancel-own-request is not implemented (listed in ROADMAP); a parent decline is the only way back.
+- A child can cancel their own `REQUESTED` request (`cancelRedemption`): same child → reward lock order, row re-read inside the lock, refund under `redemption-refund:<id>:POINTS`, stock restored, parents notified; after approval only a parent decline remains.
 - Locks are taken child → reward everywhere, so concurrent requests serialize without deadlocking; the race tests loop several rounds.

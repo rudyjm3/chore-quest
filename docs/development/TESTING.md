@@ -54,3 +54,5 @@ single-balance race fail. E2E (`phase3.spec.ts`, desktop for mutating flows): go
 - Integration tests run serially (`fileParallelism: false`) because they share one database.
 - Keep e2e at smoke level until Phase 6; richer journeys are listed in the roadmap.
 - E2E reads emailed links from the `email_outbox` table (`tests/e2e/outbox.ts`), the same data `/dev/outbox` shows.
+
+Phase 3 follow-ups / Phase 4 start — unit: `formatLocalDateTime` across zones and DST, shop rules. Integration: routine step add/remove for every run state, last required step, retired-step uniqueness, tick-versus-edit races (looped, plus a deterministic lock-holding test), child cancelling a reward request (refund once, double cancel, raced against parent approve, cross-child/family), notification retention (age windows, batching, idempotent, family-neutral), supply shop (double submit, overdraft, max quantity, requirements, cross-family, raced purchases against one balance). E2E: add/remove a routine step, child buys a supply item and sees it in the treasure chest.

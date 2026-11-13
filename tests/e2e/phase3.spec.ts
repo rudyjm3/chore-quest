@@ -67,7 +67,8 @@ test.describe("phase 3: goals, rewards, notifications, audit", () => {
     const ctx = await browser.newContext(ANONYMOUS);
     const child = await ctx.newPage();
     await signInAsChild(page, child, "Ava", "1234");
-    await child.getByRole("link", { name: /Shop/ }).click();
+    await child.getByRole("button", { name: "More" }).click();
+    await child.getByRole("link", { name: "Reward shop" }).click();
     const item = child.getByTestId("reward-shop").locator("> div", { hasText: name });
     await expect(item).toContainText("1 left");
     await item.getByRole("button", { name: "I want this!" }).click();
@@ -156,6 +157,7 @@ test.describe("phase 3: child pages", () => {
     const child = await ctx.newPage();
     await signInAsChild(page, child, "Max", "5678");
 
+    await child.getByRole("button", { name: "More" }).click();
     await child.getByRole("link", { name: /Badges/ }).click();
     await expect(child).toHaveURL(/\/child\/achievements$/);
     const gallery = child.getByTestId("achievement-gallery");

@@ -5,6 +5,7 @@ import {
   dbToLocalDate,
   diffDays,
   endOfLocalDay,
+  formatLocalDateTime,
   isLocalDate,
   localDateTimeToInstant,
   localDateToDb,
@@ -79,6 +80,40 @@ describe("daylight saving time", () => {
   it("a due time maps to the correct instant in a non-DST zone", () => {
     expect(localDateTimeToInstant("2026-06-01", "18:00", "Asia/Tokyo").toISOString()).toBe(
       "2026-06-01T09:00:00.000Z",
+    );
+  });
+});
+
+describe("formatLocalDateTime", () => {
+  it("formats in the household zone, not the server zone", () => {
+    const instant = new Date("2026-11-10T15:30:00Z");
+    expect(formatLocalDateTime(instant, "America/New_York")).toBe("2026-11-10 10:30 EST");
+    expect(formatLocalDateTime(instant, "Asia/Tokyo")).toBe("2026-11-11 00:30 GMT+9");
+    expect(formatLocalDateTime(instant, "UTC")).toBe("2026-11-10 15:30 UTC");
+  });
+
+  it("crosses the local date line and half-hour zones", () => {
+    expect(formatLocalDateTime(new Date("2026-11-10T03:00:00Z"), "America/Los_Angeles")).toBe(
+      "2026-11-09 19:00 PST",
+    );
+    expect(formatLocalDateTime(new Date("2026-11-10T00:00:00Z"), "Asia/Kolkata")).toBe(
+      "2026-11-10 05:30 GMT+5:30",
+    );
+  });
+
+  it("follows a DST change (US fall back 2026-11-01 and spring forward 2026-03-08)", () => {
+    // 05:30Z = 01:30 EDT; 06:30Z = 01:30 EST (the repeated hour), distinguished by the zone name.
+    expect(formatLocalDateTime(new Date("2026-11-01T05:30:00Z"), "America/New_York")).toBe(
+      "2026-11-01 01:30 EDT",
+    );
+    expect(formatLocalDateTime(new Date("2026-11-01T06:30:00Z"), "America/New_York")).toBe(
+      "2026-11-01 01:30 EST",
+    );
+    expect(formatLocalDateTime(new Date("2026-03-08T06:59:00Z"), "America/New_York")).toBe(
+      "2026-03-08 01:59 EST",
+    );
+    expect(formatLocalDateTime(new Date("2026-03-08T07:00:00Z"), "America/New_York")).toBe(
+      "2026-03-08 03:00 EDT",
     );
   });
 });

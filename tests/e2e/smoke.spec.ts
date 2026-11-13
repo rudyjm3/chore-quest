@@ -177,6 +177,31 @@ test.describe("family management pages", () => {
     await expect(steps.locator("li").first()).toContainText(firstTitle!);
   });
 
+  test("routines: a step can be added and then removed with confirmation", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, "mutating flow runs on desktop only");
+    test.setTimeout(60_000);
+    await page.goto("/parent/routines");
+    const card = page.getByTestId("routine-list").locator("> div").first();
+    await card.locator("summary", { hasText: "Add a step" }).click();
+    const select = card.getByLabel("Add a step");
+    const optionTexts = await select.locator("option:not([disabled])").allTextContents();
+    expect(optionTexts.length).toBeGreaterThan(0);
+    const title = optionTexts[0];
+    await select.selectOption({ label: title });
+    await card.getByRole("checkbox", { name: "Optional" }).check();
+    await card.getByRole("button", { name: "Add step" }).click();
+    const steps = card.getByTestId("routine-steps");
+    await expect(steps).toContainText(`${title} (optional)`);
+
+    await steps.getByLabel(`Remove ${title}`).click();
+    await expect(steps).toContainText("Today’s and upcoming unfinished routines");
+    await steps.getByRole("button", { name: "Yes, remove step" }).click();
+    await expect(steps).not.toContainText(`${title} (optional)`);
+  });
+
   test("history page renders, filters, and rejects a backwards range", async ({ page }) => {
     await page.goto("/parent/history");
     await expect(page.getByRole("heading", { name: "Activity history" })).toBeVisible();
@@ -223,6 +248,7 @@ test.describe("child flow", () => {
     await expect(child.getByTestId("child-nav")).toBeVisible();
     await expect(child.getByTestId("today-chores")).toBeVisible();
 
+    await child.getByRole("button", { name: "More" }).click();
     await child.getByRole("link", { name: /History/ }).click();
     await expect(child).toHaveURL(/\/child\/history$/);
     await expect(child.getByRole("heading", { name: "My history" })).toBeVisible();

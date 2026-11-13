@@ -1,5 +1,6 @@
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { CancelRequestButton } from "@/features/rewards/components/cancel-request-button";
 import { RequestRewardButton } from "@/features/rewards/components/request-reward-button";
 import { prisma } from "@/lib/db/prisma";
 import { requireChildContext } from "@/server/policies/context";
@@ -70,6 +71,9 @@ export default async function ChildRewardsPage() {
                   {r.rewardDefinition.title}
                   <StatusBadge status={r.status} />
                 </p>
+                {r.status === "REQUESTED" ? (
+                  <CancelRequestButton redemptionId={r.id} title={r.rewardDefinition.title} />
+                ) : null}
                 {r.resolutionNote ? (
                   <p className="text-muted-foreground">Note: {r.resolutionNote}</p>
                 ) : null}

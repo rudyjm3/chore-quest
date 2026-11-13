@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AUDIT_FILTERS } from "@/features/audit/summary";
 import { prisma } from "@/lib/db/prisma";
-import { isLocalDate } from "@/lib/utils/dates";
+import { formatLocalDateTime, isLocalDate } from "@/lib/utils/dates";
 import { uuidSchema } from "@/lib/validation/common";
 import { requireParentContext } from "@/server/policies/context";
 import { listAuditLog } from "@/server/services/audit.service";
@@ -90,7 +90,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/parent/aud
               <p className="text-xs text-muted-foreground">
                 {e.actorLabel} ·{" "}
                 <time dateTime={e.createdAt.toISOString()}>
-                  {e.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC
+                  {formatLocalDateTime(e.createdAt, ctx.timezone)}
                 </time>
               </p>
             </li>

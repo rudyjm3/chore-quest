@@ -41,24 +41,25 @@ Depends on: Phase 2 (history pages and scheduled job are done). Delivered on the
 
 - ✅ Goal management: edit goal and per-child assignment (dates, target override), archive/restore, explicit reset rules and expiry-job interaction (`docs/gameplay/GOALS.md`), idempotent progress repair from `goal_contribution`
 - ✅ Approvals: bulk approve (one transaction per item, per-item results), parent note visible to the child, in-app notifications for parents and children with cursor pagination (ADR 0009)
-- ⬜ Photos on submissions: **deliberately deferred** until `docs/development/PRIVACY.md` records a privacy review for storing children's images
+- ⬜ Photos on submissions: **deliberately deferred** until `docs/development/PRIVACY.md` records a privacy review for storing children's images (draft: [`PHOTO_REVIEW.md`](docs/development/PHOTO_REVIEW.md), review approved by the owner, go/no-go checklist still open; nothing built)
 - ✅ Reward catalogue (create, edit, archive, price, optional stock), child reward shop, parent resolve flow; points and stock reserved at request, refunded on denial (ADR 0010)
 - ✅ Achievements gallery for children (locked = hint only)
 - ✅ Parent audit log view (OWNER/GUARDIAN, cursor, action-prefix and date-range filters, readable summaries)
 - ✅ Parent "sign out everywhere" (Phase 2 carry-over); server session reads now bypass the cookie cache so revocation is immediate
 - ⬜ Real email provider (Phase 2 carry-over): needs an account and API key from a provider; nothing was signed up for. Steps in `docs/development/EMAIL.md`
-- ⬜ Adding/removing steps of an existing routine (Phase 2 carry-over): needs an ADR for reconciling existing `routine_step_progress` rows first
-- ⬜ Not in scope, noted for later: child cancelling their own reward request, notification email/push, retention job for notifications
+- ✅ Adding/removing steps of an existing routine (Phase 2 carry-over): steps are retired, never deleted; unfinished runs from today on are reconciled (ADR 0011)
+- ✅ Child can cancel their own open reward request (refund, stock restored); audit and notification times shown in household-local time; notification retention job (read 90 d / unread 180 d)
+- ⬜ Not in scope, noted for later: notification email/push
 
 ## Phase 4 — Pirate Adventure 🟡
 
 Depends on: Phase 3 pipeline stability, production artwork.
 
 - 🟡 World map (functional with placeholder art) → production illustrations via manifest
-- 🟡 Home Port scene: quest board, supply shop (purchase service exists, UI pending), crew camp, lighthouse, hidden cove interactions
+- 🟡 Home Port scene: supply shop ✅ (child UI, server-enforced rules, ADR 0012); quest board, crew camp, lighthouse, hidden cove ⬜ (design note in `docs/gameplay/PIRATE_ADVENTURE.md`)
 - 🟡 Parrot Island: Pip dialogue, feather grove, compass puzzle (sequence-match done; richer puzzle UI pending)
 - 🟡 Interactive quests + side missions (engine done; dialog/animation layer pending)
-- 🟡 Collectibles & inventory screen; ship upgrades/cosmetics shop
+- 🟡 Collectibles & inventory screen ✅ (read-only treasure chest); ship upgrades/cosmetics shop ✅ (supply shop); equipping cosmetics ⬜
 - ⬜ Zustand-backed scene state, CSS/SVG animations, sound toggle
 - ⬜ Lazy-loaded chapter bundles and image optimization pass
 

@@ -8,6 +8,7 @@ import { formToObject, parseOrThrow } from "@/lib/validation/form";
 import {
   createRewardDefinitionSchema,
   parentAdjustmentSchema,
+  cancelRedemptionSchema,
   requestRedemptionSchema,
   resolveRedemptionSchema,
   setRewardActiveSchema,
@@ -17,6 +18,7 @@ import { requireChildContext, requireParentContext } from "@/server/policies/con
 import {
   createRewardDefinition,
   parentAdjustment,
+  cancelRedemption,
   requestRedemption,
   resolveRedemption,
   setRewardActive,
@@ -114,5 +116,20 @@ export async function requestRedemptionAction(
     const redemption = await requestRedemption(prisma, ctx, input.rewardDefinitionId);
     revalidatePath("/child", "layout");
     return { redemptionId: redemption.id };
+  });
+}
+
+/** Child: take back one of their own open requests. Points come back straight away. */
+export async function cancelRedemptionAction(
+  _prev: ActionResult<unknown> | null,
+  formData: FormData,
+) {
+  return runAction(async () => {
+    const ctx = await requireChildContext();
+    const input = parseOrThrow(cancelRedemptionSchema, formToObject(formData));
+    const redemption = await cancelRedemption(prisma, ctx, input.redemptionId);
+    revalidatePath("/child", "layout");
+    revalidatePath("/parent/rewards");
+    return { status: redemption.status };
   });
 }

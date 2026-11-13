@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { formatLocalDateTime } from "@/lib/utils/dates";
 import type { NotificationPage } from "@/server/services/notification.service";
 
 import { MarkReadForm } from "./mark-read-form";
@@ -22,11 +23,14 @@ export function NotificationList({
   variant,
   basePath,
   linkFor,
+  timeZone,
 }: {
   page: NotificationPage;
   variant: "parent" | "child";
   basePath: string;
   linkFor: (entityType: string | null, kind: string) => string | null;
+  /** The household's IANA timezone: instants are shown in household-local time. */
+  timeZone: string;
 }) {
   const hasUnread = page.items.some((n) => !n.readAt);
   return (
@@ -63,7 +67,7 @@ export function NotificationList({
                   {n.body ? <p className="text-muted-foreground">{n.body}</p> : null}
                   <p className="text-xs text-muted-foreground">
                     <time dateTime={n.createdAt.toISOString()}>
-                      {n.createdAt.toISOString().slice(0, 16).replace("T", " ")} UTC
+                      {formatLocalDateTime(n.createdAt, timeZone)}
                     </time>
                   </p>
                 </div>

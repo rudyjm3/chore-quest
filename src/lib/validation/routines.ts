@@ -99,3 +99,14 @@ export const completeRoutineStepSchema = z.object({
   runId: uuidSchema,
   stepId: uuidSchema,
 });
+
+export const addRoutineStepSchema = z.object({
+  routineId: uuidSchema,
+  taskId: uuidSchema,
+  isOptional: z.boolean(),
+});
+
+export const removeRoutineStepSchema = z.object({
+  routineId: uuidSchema,
+  stepId: uuidSchema,
+});

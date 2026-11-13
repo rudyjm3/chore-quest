@@ -3,7 +3,7 @@ import { checkCompletionWindow, windowOf } from "@/features/routines/window";
 import { scheduledDatesBetween } from "@/features/tasks/recurrence";
 import type { DbClient } from "@/lib/db/prisma";
 import { AppError } from "@/lib/errors";
-import { addDays, dbToLocalDate, localDateToDb, type LocalDate } from "@/lib/utils/dates";
+import { addDays, dbToLocalDate, localDateToDb, todayIn, type LocalDate } from "@/lib/utils/dates";
 import type {
   AssignRoutineInput,
   CreateRoutineInput,
@@ -29,7 +29,7 @@ export async function listRoutines(db: DbClient, familyId: string) {
     where: { familyId, isArchived: false },
     orderBy: { createdAt: "asc" },
     include: {
-      steps: { orderBy: { sortOrder: "asc" }, include: { task: true } },
+      steps: { where: { retiredAt: null }, orderBy: { sortOrder: "asc" }, include: { task: true } },
       assignments: true,
     },
   });
@@ -120,7 +120,7 @@ async function requireRoutine(db: DbClient, ctx: ParentContext, routineId: strin
   assertPermission(ctx, "canManageTasks");
   const routine = await db.routine.findFirst({
     where: { id: routineId, familyId: ctx.familyId },
-    include: { steps: { orderBy: { sortOrder: "asc" } } },
+    include: { steps: { where: { retiredAt: null }, orderBy: { sortOrder: "asc" } } },
   });
   if (!routine) throw AppError.notFound("Routine");
   return routine;
@@ -239,7 +239,7 @@ export async function setRoutineStepOptional(
     const locked = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM "routine" WHERE id = ${routineId}::uuid AND "familyId" = ${ctx.familyId}::uuid FOR UPDATE`;
     if (locked.length === 0) throw AppError.notFound("Routine");
-    const steps = await tx.routineStep.findMany({ where: { routineId } });
+    const steps = await tx.routineStep.findMany({ where: { routineId, retiredAt: null } });
     const target = steps.find((s) => s.id === stepId);
     if (!target) throw AppError.notFound("Routine step");
     if (isOptional && steps.filter((s) => s.id !== stepId && !s.isOptional).length === 0) {
@@ -313,7 +313,7 @@ export async function ensureRoutineRuns(
       child: { status: "ACTIVE" }, // archived children get no new work
       ...(params.childId ? { childId: params.childId } : {}),
     },
-    include: { routine: { include: { steps: true } } },
+    include: { routine: { include: { steps: { where: { retiredAt: null } } } } },
   });
   const rows: Prisma.RoutineRunCreateManyInput[] = [];
   for (const assignment of assignments) {
@@ -341,22 +341,37 @@ export async function ensureRoutineRuns(
   if (rows.length === 0) return { created: 0 };
   const result = await db.routineRun.createMany({ data: rows, skipDuplicates: true });
 
-  // Step progress rows for any run that lacks them (new runs only, in practice).
-  const runs = await db.routineRun.findMany({
-    where: {
-      familyId: params.familyId,
-      localDate: { gte: localDateToDb(params.from), lte: localDateToDb(params.to) },
-      stepProgress: { none: {} },
-    },
-    include: { assignment: { include: { routine: { include: { steps: true } } } } },
-  });
-  const stepRows: Prisma.RoutineStepProgressCreateManyInput[] = [];
-  for (const run of runs) {
-    for (const step of run.assignment.routine.steps)
-      stepRows.push({ runId: run.id, stepId: step.id });
-  }
-  if (stepRows.length)
-    await db.routineStepProgress.createMany({ data: stepRows, skipDuplicates: true });
+  // Step progress rows for runs that have none yet. This runs under the routine row lock, the same
+  // lock `addRoutineStep`/`removeRoutineStep` take first, so a run is never half initialized while a
+  // step edit looks at it: edits skip runs without rows and this fill reads the committed step list.
+  const routineIds = [
+    ...new Set(assignments.filter((a) => !a.routine.isArchived).map((a) => a.routineId)),
+  ];
+  const fill = async (tx: Prisma.TransactionClient) => {
+    for (const routineId of routineIds.sort()) {
+      await tx.$queryRaw`SELECT id FROM "routine" WHERE id = ${routineId}::uuid FOR UPDATE`;
+      const steps = await tx.routineStep.findMany({
+        where: { routineId, retiredAt: null },
+        select: { id: true },
+      });
+      const runs = await tx.routineRun.findMany({
+        where: {
+          familyId: params.familyId,
+          assignment: { routineId },
+          localDate: { gte: localDateToDb(params.from), lte: localDateToDb(params.to) },
+          stepProgress: { none: {} },
+        },
+        select: { id: true },
+      });
+      const stepRows: Prisma.RoutineStepProgressCreateManyInput[] = runs.flatMap((run) =>
+        steps.map((step) => ({ runId: run.id, stepId: step.id })),
+      );
+      if (stepRows.length)
+        await tx.routineStepProgress.createMany({ data: stepRows, skipDuplicates: true });
+    }
+  };
+  if ("$transaction" in db) await db.$transaction((tx) => fill(tx));
+  else await fill(db);
   return { created: result.count };
 }
 
@@ -373,12 +388,14 @@ export async function listRunsForChild(
     include: {
       assignment: {
         include: {
-          routine: {
-            include: { steps: { include: { task: true }, orderBy: { sortOrder: "asc" } } },
-          },
+          routine: true,
         },
       },
-      stepProgress: true,
+      // A run's steps are its progress rows (ADR 0011): retired steps stay visible on finished runs.
+      stepProgress: {
+        include: { step: { include: { task: true } } },
+        orderBy: { step: { sortOrder: "asc" } },
+      },
     },
     orderBy: { localDate: "asc" },
   });
@@ -426,8 +443,8 @@ export async function completeRoutineStep(
     const run = await tx.routineRun.findFirst({
       where: { id: runId, childId: ctx.childId, familyId: ctx.familyId },
       include: {
-        assignment: { include: { routine: { include: { steps: true } } } },
-        stepProgress: true,
+        assignment: { include: { routine: true } },
+        stepProgress: { include: { step: true } },
       },
     });
     if (!run) throw AppError.notFound("Routine run");
@@ -456,14 +473,17 @@ export async function completeRoutineStep(
       }
     }
     const progress = run.stepProgress.find((p) => p.stepId === stepId);
-    if (!progress) throw AppError.notFound("Routine step");
+    if (!progress || progress.step.retiredAt) throw AppError.notFound("Routine step");
     if (progress.status !== "DONE") {
       await tx.routineStepProgress.update({
         where: { id: progress.id },
         data: { status: "DONE", completedAt: new Date() },
       });
     }
-    const required = run.assignment.routine.steps.filter((s) => !s.isOptional).map((s) => s.id);
+    // Required = the run's own rows whose step is still active and not optional (ADR 0011).
+    const required = run.stepProgress
+      .filter((p) => !p.step.retiredAt && !p.step.isOptional)
+      .map((p) => p.stepId);
     const doneIds = new Set(
       run.stepProgress
         .filter((p) => p.status === "DONE" || p.stepId === stepId)
@@ -489,4 +509,155 @@ export async function completeRoutineStep(
     }
     return { run: updated, allStepsDone: allDone, approvalPolicy: run.assignment.approvalPolicy };
   });
+}
+
+/** Lock the routine, then its unfinished runs from `today` on, in id order (ADR 0011: routine → run). */
+async function lockOpenRuns(tx: Prisma.TransactionClient, routineId: string, today: LocalDate) {
+  await tx.$queryRaw`SELECT id FROM "routine" WHERE id = ${routineId}::uuid FOR UPDATE`;
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT r.id FROM "routine_run" r
+    JOIN "routine_assignment" a ON a.id = r."assignmentId"
+    WHERE a."routineId" = ${routineId}::uuid
+      AND r.status IN ('PENDING', 'IN_PROGRESS', 'REJECTED')
+      AND EXISTS (SELECT 1 FROM "routine_step_progress" p WHERE p."runId" = r.id)
+      AND r."localDate" >= ${localDateToDb(today)}::date
+    ORDER BY r.id
+    FOR UPDATE OF r`;
+  return rows.map((r) => r.id);
+}
+
+/**
+ * Append a step (a family task) to an existing routine. Unfinished runs from today on get a PENDING
+ * progress row; submitted/approved/past runs are not touched (ADR 0011).
+ */
+export async function addRoutineStep(
+  db: DbClient,
+  ctx: ParentContext,
+  input: { routineId: string; taskId: string; isOptional: boolean },
+) {
+  assertPermission(ctx, "canManageTasks");
+  const result = await db.$transaction(async (tx) => {
+    const family = await tx.family.findUniqueOrThrow({
+      where: { id: ctx.familyId },
+      select: { timezone: true },
+    });
+    const runIds = await lockOpenRuns(tx, input.routineId, todayIn(family.timezone));
+    const routine = await tx.routine.findFirst({
+      where: { id: input.routineId, familyId: ctx.familyId },
+      include: { steps: { where: { retiredAt: null } } },
+    });
+    if (!routine) throw AppError.notFound("Routine");
+    if (routine.isArchived) throw AppError.invalidState("Restore this routine before editing it");
+    const task = await tx.task.findFirst({
+      where: { id: input.taskId, familyId: ctx.familyId, isArchived: false },
+      select: { id: true },
+    });
+    if (!task) throw AppError.validation("Choose one of your active tasks");
+    if (routine.steps.some((s) => s.taskId === task.id)) {
+      throw AppError.invalidState("This task is already a step of the routine");
+    }
+    if (input.isOptional && routine.steps.every((s) => s.isOptional)) {
+      throw AppError.invalidState("A routine needs at least one required step");
+    }
+    const sortOrder = routine.steps.reduce((max, s) => Math.max(max, s.sortOrder), 0) + 1;
+    const step = await tx.routineStep.create({
+      data: {
+        routineId: routine.id,
+        taskId: task.id,
+        sortOrder,
+        isOptional: input.isOptional,
+      },
+    });
+    if (runIds.length) {
+      await tx.routineStepProgress.createMany({
+        data: runIds.map((runId) => ({ runId, stepId: step.id })),
+        skipDuplicates: true,
+      });
+      // A run that was only waiting on a (now added) required step can no longer be complete; runs
+      // are unfinished here by construction, so nothing else changes.
+    }
+    return { step, runsUpdated: runIds.length };
+  });
+  await auditRoutine(db, ctx, "routine.step.add", "RoutineStep", result.step.id, {
+    routineId: input.routineId,
+    taskId: input.taskId,
+    isOptional: input.isOptional,
+    runsUpdated: result.runsUpdated,
+  });
+  return result;
+}
+
+/**
+ * Retire a step (never deleted). Unfinished runs whose remaining required steps are all done are
+ * submitted in the same transaction. Returns those runs so the caller can auto-approve where the
+ * assignment policy says so.
+ */
+export async function removeRoutineStep(
+  db: DbClient,
+  ctx: ParentContext,
+  input: { routineId: string; stepId: string },
+) {
+  assertPermission(ctx, "canManageTasks");
+  const result = await db.$transaction(async (tx) => {
+    const family = await tx.family.findUniqueOrThrow({
+      where: { id: ctx.familyId },
+      select: { timezone: true },
+    });
+    const runIds = await lockOpenRuns(tx, input.routineId, todayIn(family.timezone));
+    const routine = await tx.routine.findFirst({
+      where: { id: input.routineId, familyId: ctx.familyId },
+      include: { steps: { where: { retiredAt: null } } },
+    });
+    if (!routine) throw AppError.notFound("Routine");
+    const target = routine.steps.find((s) => s.id === input.stepId);
+    if (!target) throw AppError.notFound("Routine step");
+    if (!target.isOptional && routine.steps.filter((s) => !s.isOptional).length === 1) {
+      throw AppError.invalidState("A routine needs at least one required step");
+    }
+    await tx.routineStep.update({ where: { id: target.id }, data: { retiredAt: new Date() } });
+
+    const submitted: Array<{ runId: string; approvalPolicy: string }> = [];
+    if (runIds.length) {
+      const runs = await tx.routineRun.findMany({
+        where: { id: { in: runIds }, status: { in: ["PENDING", "IN_PROGRESS", "REJECTED"] } },
+        include: {
+          assignment: { include: { routine: { select: { name: true } } } },
+          stepProgress: { include: { step: true } },
+        },
+      });
+      for (const run of runs) {
+        const rows = run.stepProgress.filter((p) => p.stepId !== target.id && !p.step.retiredAt);
+        const required = rows.filter((p) => !p.step.isOptional);
+        const anyDone = rows.some((p) => p.status === "DONE");
+        // Only runs the child already worked on can complete by removal; an untouched run stays open.
+        if (!anyDone || !required.every((p) => p.status === "DONE")) continue;
+        const now = new Date();
+        await tx.routineRun.update({
+          where: { id: run.id },
+          data: { status: "SUBMITTED", submittedAt: now, startedAt: run.startedAt ?? now },
+        });
+        if (run.assignment.approvalPolicy !== "AUTO_APPROVE") {
+          const child = await tx.child.findUniqueOrThrow({
+            where: { id: run.childId },
+            select: { displayName: true },
+          });
+          await notifyParents(tx, ctx.familyId, {
+            kind: "SUBMISSION_PENDING",
+            title: `${child.displayName} finished “${run.assignment.routine.name}”`,
+            entityType: "RoutineRun",
+            entityId: run.id,
+            dedupeKey: `routine-run:${run.id}:${now.toISOString()}`,
+          });
+        }
+        submitted.push({ runId: run.id, approvalPolicy: run.assignment.approvalPolicy });
+      }
+    }
+    return { stepId: target.id, runsOpen: runIds.length, submitted };
+  });
+  await auditRoutine(db, ctx, "routine.step.remove", "RoutineStep", result.stepId, {
+    routineId: input.routineId,
+    runsOpen: result.runsOpen,
+    runsSubmitted: result.submitted.length,
+  });
+  return result;
 }

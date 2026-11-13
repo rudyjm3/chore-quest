@@ -470,6 +470,85 @@ export async function resolveRedemption(
   });
 }
 
+/**
+ * A child takes back their own `REQUESTED` redemption (ADR 0010 reservation rules). Refunds the
+ * reserved points through the ledger under a separate key, restores the stock unit and tells the
+ * parents. The row is re-read after the child → reward locks are held, so cancelling against a
+ * parent's approval resolves to exactly one outcome. Cancelling twice is a no-op.
+ */
+export async function cancelRedemption(db: DbClient, ctx: ChildContext, redemptionId: string) {
+  const found = await db.rewardRedemption.findFirst({
+    where: { id: redemptionId, familyId: ctx.familyId, childId: ctx.childId },
+    select: { rewardDefinitionId: true },
+  });
+  if (!found) throw AppError.notFound("Redemption");
+
+  return db.$transaction(async (tx) => {
+    await lockChildRow(tx, ctx.childId);
+    await lockRewardRow(tx, found.rewardDefinitionId);
+    const redemption = await tx.rewardRedemption.findFirst({
+      where: { id: redemptionId, familyId: ctx.familyId, childId: ctx.childId },
+      include: { rewardDefinition: { select: { title: true, stock: true } } },
+    });
+    if (!redemption) throw AppError.notFound("Redemption");
+    if (redemption.status === "CANCELLED") return redemption;
+    if (redemption.status !== "REQUESTED") {
+      throw AppError.invalidState("A grown-up already answered this request");
+    }
+    const title = redemption.rewardDefinition.title;
+    // Legacy requests made before points were reserved have nothing to refund or restore.
+    const reserved = redemption.ledgerEntryId !== null;
+    let refundEntryId: string | null = null;
+    if (reserved) {
+      if (redemption.costPoints > 0) {
+        const { entry } = await postLedgerEntry(tx, {
+          familyId: ctx.familyId,
+          childId: ctx.childId,
+          currency: "POINTS",
+          amount: redemption.costPoints,
+          sourceType: "REDEMPTION_REFUND",
+          sourceId: redemption.id,
+          sourceKey: sourceKeys.redemptionRefund(redemption.id),
+          description: `Refund for “${title}” (you cancelled)`,
+        });
+        refundEntryId = entry.id;
+      }
+      if (redemption.rewardDefinition.stock !== null) {
+        await tx.rewardDefinition.update({
+          where: { id: redemption.rewardDefinitionId },
+          data: { stock: { increment: 1 } },
+        });
+      }
+    }
+    const updated = await tx.rewardRedemption.update({
+      where: { id: redemption.id },
+      data: {
+        status: "CANCELLED",
+        resolvedAt: new Date(),
+        ...(refundEntryId ? { refundEntryId } : {}),
+      },
+    });
+    await notifyParents(tx, ctx.familyId, {
+      kind: "REDEMPTION_RESOLVED",
+      title: `${ctx.childName} cancelled their request for “${title}”`,
+      body: reserved ? `${redemption.costPoints} points went back to them.` : undefined,
+      entityType: "RewardRedemption",
+      entityId: redemption.id,
+      dedupeKey: `redemption:${redemption.id}:cancelled`,
+    });
+    await recordAudit(tx, {
+      familyId: ctx.familyId,
+      actorType: "CHILD",
+      actorChildId: ctx.childId,
+      action: "reward.redemption.cancel",
+      entityType: "RewardRedemption",
+      entityId: redemption.id,
+      metadata: { title, costPoints: redemption.costPoints },
+    });
+    return updated;
+  });
+}
+
 export async function listRedemptionsForFamily(
   db: DbClient,
   familyId: string,
