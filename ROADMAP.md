@@ -58,10 +58,10 @@ Depends on: Phase 2 (history pages and scheduled job are done). Delivered on the
 Depends on: Phase 3 pipeline stability, production artwork.
 
 - 🟡 World map (functional with placeholder art) → production illustrations via manifest
-- 🟡 Home Port scene: supply shop ✅ (child UI, server-enforced rules, ADR 0012); quest board, crew camp, lighthouse, hidden cove ⬜ (design note in `docs/gameplay/PIRATE_ADVENTURE.md`)
-- 🟡 Parrot Island: Pip dialogue, feather grove, compass puzzle (sequence-match done; richer puzzle UI pending)
+- ✅ Home Port scene (functional, placeholder art): supply shop (ADR 0012), quest board (read-only), crew camp (equip/unequip, ADR 0013), lighthouse hints, hidden cove (one-time reward, ADR 0014); hub at `/child/port`
+- 🟡 Parrot Island: Pip dialogue ✅ (static lines on the Home Port hub); feather grove, compass puzzle (sequence-match done; richer puzzle UI pending)
 - 🟡 Interactive quests + side missions (engine done; dialog/animation layer pending)
-- 🟡 Collectibles & inventory screen ✅ (read-only treasure chest); ship upgrades/cosmetics shop ✅ (supply shop); equipping cosmetics ⬜
+- 🟡 Collectibles & inventory screen ✅ (read-only treasure chest); ship upgrades/cosmetics shop ✅ (supply shop); equipping cosmetics ✅ (crew camp)
 - ⬜ Zustand-backed scene state, CSS/SVG animations, sound toggle
 - ⬜ Lazy-loaded chapter bundles and image optimization pass
 

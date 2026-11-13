@@ -137,6 +137,14 @@ Date rules: [docs/database/TIMEZONES.md](docs/database/TIMEZONES.md).
 - `inventory.service` (ext.): `listShopItems`, `loadShopContext`; `purchaseItem` enforces the pure rules in `src/features/shop/shop-state.ts` (ADR 0012).
 - `src/lib/utils/dates.ts`: `formatLocalDateTime` for household-local timestamps.
 
+### Home Port slice
+
+- `crew-camp.service`: `getCrewCamp` (own wearable items by slot, ownership re-checked on read) and `equipCosmetic` (lock child → re-read progress → check ownership and `config.slot` → write `{ equipped }` into `child_adventure_progress.state`; ADR 0013). State schema: `src/game/schemas/adventure-state.ts`; pure helpers: `src/features/adventures/crew-camp.ts`.
+- `location.service`: `getLocationStatus` / `visitLocation` — one-time item reward at a configured place, `requiresItemKey` gate, `grantItem` with `sourceKeys.locationItem` and source type `LOCATION_REWARD` (ADR 0014).
+- `adventure.service.getAdventureState` now also returns each quest's `rewards` and each chapter's `hint`. The quest board (`src/features/adventures/quest-board.ts`, pure) only filters that state; it has no tables or writes.
+- Pure engine modules: `src/game/engine/dialogue.ts` (situation and line selection over engine state, rotating by household-local date) and `lighthouse.ts` (hint of the current chapter). Authored text lives in `src/game/themes/pirate/dialogue.ts` and chapter `config.hint`.
+- Child routes: `/child/port` (hub with Pip), `/child/port/quest-board`, `/child/port/crew-camp`, `/child/port/lighthouse`, `/child/port/hidden-cove`; reachable from the "More" menu.
+
 ## Service relationships and the approval pipeline
 
 ```mermaid

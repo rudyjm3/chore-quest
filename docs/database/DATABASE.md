@@ -24,6 +24,7 @@ dates are `date` columns.
 | 13  | `20261113090300_goal_assignment_target_override`         | `goal_assignment.targetOverride` + CHECK `> 0`                                                                                                                                                                                                                                                  |
 | 14  | `20261113100000_routine_step_retire`                     | `routine_step.retiredAt` (ADR 0011); `(routineId, sortOrder)` and `(routineId, taskId)` uniqueness becomes partial (`WHERE retiredAt IS NULL`)                                                                                                                                                  |
 | 15  | `20261113110000_notification_created_at_index`           | Index on `notification.createdAt` for the retention job (ADR 0009)                                                                                                                                                                                                                              |
+| 16  | `20261113120000_inventory_source_location_reward`        | `InventorySourceType.LOCATION_REWARD` (one-time location rewards, ADR 0014). Enum value only; no table changes.                                                                                                                                                                                 |
 
 Workflow: edit the schema → `pnpm db:migrate --name <change>` (dev) → commit SQL → CI runs
 `prisma migrate deploy` and a drift check (`prisma migrate diff --from-config-datasource --to-schema`).
@@ -157,6 +158,7 @@ erDiagram
   CHECK `0 <= currentCount <= targetCount`; `quest_contribution` unique `(objectiveProgressId, completionId)`.
 - `puzzle_attempt`: partial unique index `puzzle_attempt_completed_uq` on `(childId, puzzleId) WHERE status = 'COMPLETED'`.
 - `child_inventory_item` unique `(childId, itemId)`, CHECK `quantity >= 0`; `inventory_grant` unique `sourceKey`, CHECK `quantity <> 0`.
+- `child_adventure_progress.state` (JSON) holds `{ equipped: { <slot>: <itemKey> } }` validated by `adventureStateSchema` (ADR 0013); never authoritative for rewards. One-time location rewards are `inventory_grant` rows with `sourceType = LOCATION_REWARD` and `sourceKey = location:<adventureProgressId>:<chapterKey>:<locationKey>:item:<itemKey>` (ADR 0014); "already found" is derived from that row.
 
 ## Transactions and locking
 

@@ -59,9 +59,12 @@ Polished colourful 3D-cartoon illustration, tropical pirate environments, wooden
 readable markers, friendly characters, clear distinction between playable locations and decoration. All
 current assets are flat-colour placeholders flagged `placeholder: true` in the manifest.
 
-## Home Port scene: design note (not built yet)
+## Home Port scene: design note and status
 
-Phase 4 delivered the supply shop and the treasure chest. The rest of the Home Port scene is designed here for the next slice; none of it is built.
+Phase 4 delivered the supply shop and the treasure chest, and the Home Port slice built the rest (all at `/child/port`, reachable from "More"):
+quest board ✅, crew camp ✅ (ADR 0013), lighthouse ✅, Pip dialogue ✅ and hidden cove ✅ (ADR 0014), with placeholder art through the manifest.
+Differences from the original note: the lighthouse is repeatable (no once-per-day state yet); quest descriptions are always visible instead of on tap;
+the cove requires a `map-fragment` and rewards the `cove-pearl` collectible; Pip's line rotates by household-local date and appears on the hub.
 
 - **Quest board.** Read-only list of the chapter's `ACTIVE` quests and their objectives from `getAdventureState` (title, progress `current/target`,
   reward preview). No new tables. Tapping a quest shows its description; progress comes only from the engine.
