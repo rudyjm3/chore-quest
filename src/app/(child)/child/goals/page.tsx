@@ -23,7 +23,7 @@ export default async function ChildGoalsPage() {
             title={a.goal.title}
             description={a.goal.description}
             progress={a.progressCount}
-            target={a.goal.targetCount}
+            target={a.targetOverride ?? a.goal.targetCount}
             status={a.status}
             streak={a.goal.type === "CONSECUTIVE_DAYS" ? a.currentStreak : undefined}
             rewardPoints={a.goal.rewardPoints}

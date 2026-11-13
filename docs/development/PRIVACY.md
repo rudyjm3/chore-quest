@@ -23,6 +23,16 @@ are included. Next.js anonymous telemetry applies to the build tool only (opt ou
 Phase 2 added **no new child data**. Adult data added: invitee email addresses (`family_invitation`, kept until the owner
 revokes it or the family is deleted) and, with the development email driver only, captured mail (`email_outbox`, pruned after 7 days).
 
+Phase 3 added **no new child data**. Notifications and reward requests reference the child's existing display name and the parent-entered
+reward/chore titles and notes. Parent notes on approvals are shown only to the child they are about.
+
+### Photos on submissions: deferred
+
+Attaching photos to chore submissions is **not implemented**. Storing children's images (and, by accident, their surroundings, faces or
+location metadata) requires a documented privacy review first: legal basis and parental consent under COPPA/GDPR-K, storage location and
+region, EXIF stripping, retention and deletion, who can view, moderation, and a processor assessment of the storage vendor. Until that
+review is recorded in this file, submissions carry text notes only and the child UI has no upload control.
+
 ## Technical controls in place
 
 - Children never create accounts; a parent/guardian creates the profile (a form of parental control).

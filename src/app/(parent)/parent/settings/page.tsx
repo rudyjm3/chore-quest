@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/shared/page-header";
+import { SignOutEverywhereButton } from "@/features/families/components/auth-forms";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   FamilySettingsForm,
@@ -105,6 +106,18 @@ export default async function SettingsPage() {
               Only the family owner can invite or remove adults.
             </p>
           )}
+        </CardContent>
+      </Card>
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Your sign-ins</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Lost a phone or used a shared computer? This signs your account out on every device,
+            including this one. Children&apos;s sessions are not affected.
+          </p>
+          <SignOutEverywhereButton />
         </CardContent>
       </Card>
     </>

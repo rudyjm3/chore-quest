@@ -13,6 +13,8 @@ export interface TodayOccurrence {
   points: number;
   status: string;
   dueTime: string | null;
+  /** The parent's note from their latest review, shown to the child. */
+  parentNote: string | null;
 }
 
 export interface TodayRun {
@@ -20,6 +22,7 @@ export interface TodayRun {
   name: string;
   status: string;
   bonusPoints: number;
+  parentNote: string | null;
   /** Household-local completion window, e.g. "06:00–09:00". */
   window: string | null;
   steps: Array<{ stepId: string; title: string; status: string; isOptional: boolean }>;
@@ -49,6 +52,11 @@ export function ChildTodayList({
                 <p className="text-sm text-muted-foreground">
                   ⭐ {o.points} points{o.dueTime ? ` · by ${o.dueTime}` : ""}
                 </p>
+                {o.parentNote ? (
+                  <p className="mt-1 text-sm font-medium" data-testid="parent-note">
+                    💬 Grown-up says: {o.parentNote}
+                  </p>
+                ) : null}
               </div>
               {o.status === "PENDING" || o.status === "REJECTED" ? (
                 <ActionForm
@@ -113,6 +121,11 @@ export function ChildTodayList({
                   </li>
                 ))}
               </ul>
+              {run.parentNote ? (
+                <p className="text-sm font-medium" data-testid="parent-note">
+                  💬 Grown-up says: {run.parentNote}
+                </p>
+              ) : null}
               {run.window ? <p className="text-xs font-bold">Open between {run.window}</p> : null}
               <p className="text-xs text-muted-foreground">
                 Finish every step to earn {run.bonusPoints} bonus points.

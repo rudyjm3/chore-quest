@@ -73,6 +73,8 @@ export const achievementDefinitionSchema = z.object({
   key: z.string(),
   title: z.string(),
   description: z.string(),
+  /** Spoiler-free nudge shown while locked; the description is revealed on earning. */
+  hint: z.string().optional(),
   iconKey: z.string().optional(),
   criteria: z.discriminatedUnion("type", [
     z.object({ type: z.literal("APPROVED_ACTIVITY_COUNT"), count: z.number().int().min(1) }),

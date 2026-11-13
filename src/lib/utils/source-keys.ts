@@ -29,6 +29,7 @@ export const sourceKeys = {
   achievementItem: (earnedAchievementId: string, itemKey: string) =>
     `achievement:${earnedAchievementId}:item:${itemKey}`,
   redemption: (redemptionId: string) => `redemption:${redemptionId}:POINTS`,
+  redemptionRefund: (redemptionId: string) => `redemption-refund:${redemptionId}:POINTS`,
   purchaseDebit: (purchaseId: string) => `purchase:${purchaseId}:COINS`,
   purchaseItem: (purchaseId: string, itemKey: string) => `purchase:${purchaseId}:item:${itemKey}`,
   adventureStartItem: (adventureProgressId: string, itemKey: string) =>

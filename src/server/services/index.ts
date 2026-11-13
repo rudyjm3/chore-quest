@@ -17,3 +17,5 @@ export * as auditService from "./audit.service";
 export * as maintenanceService from "./maintenance.service";
 export * as historyService from "./history.service";
 export * as invitationService from "./invitation.service";
+export * as notificationService from "./notification.service";
+export * as achievementService from "./achievement.service";

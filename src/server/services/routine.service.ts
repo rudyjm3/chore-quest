@@ -14,6 +14,7 @@ import type { ChildContext, ParentContext } from "@/server/policies/context";
 import { assertFamilyScope, assertPermission } from "@/server/policies/family-access";
 
 import { recordAudit } from "./audit.service";
+import { notifyParents } from "./notification.service";
 
 export async function listRoutineTemplates(db: DbClient) {
   return db.routineTemplate.findMany({
@@ -477,6 +478,15 @@ export async function completeRoutineStep(
         submittedAt: allDone ? new Date() : undefined,
       },
     });
+    if (allDone && run.assignment.approvalPolicy !== "AUTO_APPROVE") {
+      await notifyParents(tx, ctx.familyId, {
+        kind: "SUBMISSION_PENDING",
+        title: `${ctx.childName} finished “${run.assignment.routine.name}”`,
+        entityType: "RoutineRun",
+        entityId: run.id,
+        dedupeKey: `routine-run:${run.id}:${updated.submittedAt?.toISOString() ?? "none"}`,
+      });
+    }
     return { run: updated, allStepsDone: allDone, approvalPolicy: run.assignment.approvalPolicy };
   });
 }

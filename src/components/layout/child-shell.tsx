@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ResourceCounter } from "@/components/shared/resource-counter";
@@ -9,11 +10,13 @@ export function ChildShell({
   childName,
   wallets,
   signOut,
+  unreadCount = 0,
 }: {
   children: ReactNode;
   childName: string;
   wallets: { POINTS: number; COINS: number; XP: number };
   signOut: ReactNode;
+  unreadCount?: number;
 }) {
   return (
     <div
@@ -49,6 +52,20 @@ export function ChildShell({
               value={wallets.XP}
               className="border-pirate-gold/60 bg-pirate-ink/40 text-white"
             />
+            <Link
+              href="/child/notifications"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-pirate-gold/60 bg-pirate-ink/40 px-3 text-sm font-bold"
+              data-testid="child-bell"
+            >
+              <span aria-hidden>🔔</span>
+              <span className="sr-only">News</span>
+              {unreadCount > 0 ? (
+                <span className="ml-1" data-testid="child-unread">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                  <span className="sr-only"> unread</span>
+                </span>
+              ) : null}
+            </Link>
             {signOut}
           </div>
         </div>

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { runAction, type ActionResult } from "@/lib/errors";
 import {
+  bulkApproveSchema,
   reviewOccurrenceSchema,
   reviewRoutineRunSchema,
   submitOccurrenceSchema,
@@ -13,6 +14,7 @@ import { formToObject, parseOrThrow } from "@/lib/validation/form";
 import { completeRoutineStepSchema } from "@/lib/validation/routines";
 import { requireChildContext, requireParentContext } from "@/server/policies/context";
 import {
+  bulkApprove,
   completeRoutineStepAndSubmit,
   reviewOccurrence,
   reviewRoutineRun,
@@ -77,5 +79,25 @@ export async function completeRoutineStepAction(
     const result = await completeRoutineStepAndSubmit(prisma, ctx, input.runId, input.stepId);
     revalidatePath("/child", "layout");
     return { allStepsDone: result.allStepsDone, autoApproved: result.autoApproved };
+  });
+}
+
+/** Parent: approve the ticked items. Returns one result per item (partial failures included). */
+export async function bulkApproveAction(_prev: ActionResult<unknown> | null, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireParentContext();
+    const items = formData.getAll("items").map((value) => {
+      const [kind, id] = String(value).split(":");
+      return { kind, id };
+    });
+    const input = parseOrThrow(bulkApproveSchema, {
+      familyId: ctx.familyId,
+      items,
+      note: String(formData.get("note") ?? "") || undefined,
+    });
+    const results = await bulkApprove(prisma, ctx, input);
+    revalidatePath("/parent/approvals");
+    revalidatePath("/parent");
+    return { results };
   });
 }

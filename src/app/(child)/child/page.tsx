@@ -48,12 +48,14 @@ export default async function ChildHomePage() {
         points: o.pointsSnapshot,
         status: o.status,
         dueTime: o.assignment.dueTime,
+        parentNote: o.status === "SUBMITTED" ? null : (o.submission?.review?.note ?? null),
       }))}
       runs={runs.map((run) => ({
         id: run.id,
         name: run.assignment.routine.name,
         status: run.status,
         bonusPoints: run.bonusPointsSnapshot,
+        parentNote: run.reviewNote,
         window:
           run.assignment.windowStart && run.assignment.windowEnd
             ? `${run.assignment.windowStart}–${run.assignment.windowEnd}`

@@ -43,3 +43,9 @@
 - Never run migrations, resets or seeds against production from a developer machine.
 - Rotate `BETTER_AUTH_SECRET` and `CHILD_SESSION_SECRET` only with a session-invalidation plan.
 - Database credentials and Supabase service-role keys live only in Vercel/CI secrets.
+
+## Session revocation (Phase 3)
+
+Parent session reads (`getParentSession`) bypass Better Auth's signed cookie cache (`disableCookieCache`), so "sign out everywhere" and
+password-reset revocations apply on the very next request instead of after the cache lifetime. `src/proxy.ts` still only checks that a
+session cookie exists; authorization is enforced by `requireParentContext()` in layouts, actions and route handlers.

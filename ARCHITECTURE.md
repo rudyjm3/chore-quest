@@ -118,6 +118,17 @@ Date rules: [docs/database/TIMEZONES.md](docs/database/TIMEZONES.md).
 | `routine.service` (ext.)  | Edit/archive routines, reorder steps, optional steps, assignment editing, **completion-window enforcement** (`features/routines/window.ts`). |
 | `child.service` (ext.)    | Profile/avatar edit, archive/restore, PIN reset (also revokes sessions). Archived children get no new occurrences or runs.                   |
 
+## Phase 3 services
+
+| Service                   | Responsibility                                                                                                                                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `notification.service`    | In-app notifications (ADR 0009): `notifyParents`/`notifyChild` (idempotent via `dedupeKey`), cursor-paginated `listNotifications`, `countUnread`, `markNotificationsRead`. Written inside the producing transaction. |
+| `approval.service` (ext.) | Parent note on approve/reject (visible to the child), notifications, `bulkApprove` (one transaction per item through the single-item path, per-item results, audit per item).                                        |
+| `goal.service` (ext.)     | `updateGoal`, `setGoalArchived`, `updateGoalAssignment`, `repairGoalAssignment`/`repairGoalProgress` (replay from `goal_contribution`), shared `awardGoalCompletion`. Rules: `docs/gameplay/GOALS.md`.               |
+| `reward.service` (ext.)   | Catalogue (`create/update/setRewardActive/listRewardDefinitions`), redemptions that reserve points and stock at request time and refund on denial (ADR 0010).                                                        |
+| `achievement.service`     | Child gallery: earned vs locked; locked entries expose only a `hint`, never the description or criteria.                                                                                                             |
+| `audit.service` (ext.)    | `listAuditLog` for OWNER/GUARDIAN: family-scoped, cursor pagination, action-prefix and local date-range filters, readable summaries from `features/audit/summary.ts` (pure).                                         |
+
 ## Service relationships and the approval pipeline
 
 ```mermaid
@@ -204,4 +215,4 @@ More: [docs/gameplay/GAME_ENGINE.md](docs/gameplay/GAME_ENGINE.md),
 
 ## Architecture decision records
 
-See `docs/architecture/adr/`.
+See `docs/architecture/adr/`. Phase 3 added 0009 (in-app notifications) and 0010 (reward reservation on request).

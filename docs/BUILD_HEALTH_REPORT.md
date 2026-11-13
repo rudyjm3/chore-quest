@@ -193,3 +193,68 @@ family+email), each with a violating test in `schema-integrity.test.ts`. Drift c
 - `email_outbox` stores live links when the dev driver is used in production; the viewer is disabled there and rows expire after 7 days.
 - The parent bottom navigation now has 9 items; how it fits on very small phones was not visually checked.
 - Still deferred from the Phase 2 wish-list: parent "sign out everywhere", per-child due times beyond a per-assignment time.
+
+---
+
+# Phase 3 — Goals and rewards
+
+Date: 2026-11-13 · Branch: `ccr-78ac4d38-2v7h9a` · Same environment (Node 22, pnpm 10.28, PostgreSQL 16).
+
+## What changed
+
+1. **Goal management** (`goal.service`, `/parent/goals`): edit a goal (title, description, target, reward), archive/restore, edit a child's
+   assignment (dates for one-off goals, per-assignment target override). Reset rules and the interaction with the Phase 2 expiry job are
+   written down in `docs/gameplay/GOALS.md` and tested (a weekly goal whose week EXPIRED still rolls forward; extending an expired
+   assignment reactivates it). `repairGoalAssignment`/`repairGoalProgress` rebuild the cached counters from `goal_contribution` with the
+   pure `recomputeProgress`; tests corrupt the counters and prove the repair restores them (count and streak goals), is idempotent and
+   completes-and-pays at most once. Lowering a target below progress completes the assignment once.
+2. **Approvals**: `bulkApprove` (≤ 50 items, each through the single-item path in its own transaction, audited per item, partial failures
+   reported per item, safe to re-send); parent note on approve/reject now stored (`parent_review.note`, new `routine_run.reviewNote`) and
+   shown to the child on Today; in-app notifications (`notification` table, ADR 0009) for new submissions (all OWNER/GUARDIAN), approved /
+   sent back (child) and reward requested / answered, with unread badges, cursor pagination and mark-read. **Photos on submissions were
+   deferred**: `docs/development/PRIVACY.md` now records why (children's images need a documented privacy review first).
+3. **Rewards**: parent catalogue (create, edit, archive/restore, price, optional stock), child reward shop, parent resolve flow with note.
+   Behaviour change (ADR 0010): points and stock are **reserved when the child asks** and refunded on denial; `resolveRedemption` now
+   re-reads the redemption under the lock (the Phase 1 version checked status before locking). Repeating the same decision is a no-op.
+4. **Achievements gallery** (`/child/achievements`): locked badges show a theme-supplied `hint` (new `achievement_definition.hint`,
+   optional in the theme schema); the description and criteria never reach the client until earned.
+5. **Audit log view** (`/parent/audit`): cursor-paginated, filter by action prefix and local date range, OWNER/GUARDIAN only, one-line
+   summaries from a pure template table; raw metadata is never returned (tested with a canary field).
+6. **Carry-over done**: parent "sign out everywhere" (`/parent/settings`). Making it testable exposed that Better Auth's 5-minute cookie
+   cache kept a revoked session alive on other devices, so `getParentSession` now reads with `disableCookieCache` (one extra indexed
+   lookup per parent request).
+7. Mobile parent navigation: the bottom bar showed only the first five links, leaving Goals, Rewards, History, Inbox, Log and Settings
+   unreachable on a phone. It now shows four links plus a "More" menu (exercised by the mobile e2e project).
+
+## Database
+
+Four migrations: `phase3_notifications_reward_stock_hints` (generated), `phase3_constraints` (hand-written: one notification recipient,
+`stock >= 0`, refund-needs-debit), `routine_run_review_note`, `goal_assignment_target_override` (column + CHECK). Every constraint has a
+violating test (`schema-integrity.test.ts` and the feature tests). New household table `notification` has `familyId`, cascade and an index
+starting with `familyId`.
+
+## Test counts
+
+| Suite       | Phase 2 | Phase 3 | Notes                                                                                                                                        |
+| ----------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit        | 66      | 75      | `recomputeProgress`, audit summaries                                                                                                         |
+| Integration | 71      | 114     | goal management/repair, redemptions (raced), notifications, bulk approve, audit, achievements, 3 constraint tests                            |
+| E2E         | 45      | 57      | 49 run + 8 skipped on the mobile project by design (mutating or rate-limited flows run once, on desktop); +sign-out-everywhere in auth-flows |
+
+`pnpm check`, `pnpm format:check` and `pnpm test:e2e` pass. Race tests loop six rounds; removing the child/reward locks makes the
+single-balance race test fail (checked by mutation).
+
+## Known limitations
+
+- **Left out: real email provider.** It needs a provider account and API key; nothing was signed up for. Mail is still captured by the dev
+  driver (`docs/development/EMAIL.md`).
+- **Left out: adding/removing steps of an existing routine.** Needs an ADR for reconciling existing runs' `routine_step_progress` rows first.
+- **Photos on submissions** are deferred pending a privacy review (see above).
+- Notifications are pull-only (visible on the next page load); there is no email/push and no retention job for old rows.
+- A child cannot cancel their own reward request; a parent declining is the way back.
+- Editing the target of a goal never rewrites history: `COMPLETED`/`EXPIRED` assignments keep their result.
+- A goal's type, recurrence and filters cannot be edited after creation (archive and recreate), to avoid reinterpreting history.
+- Audit rows written before Phase 3 for approve/reject carry only the fields they always had; unknown future actions render as their
+  humanised key.
+- "Sign out everywhere" does not write an audit entry (the revocation happens inside Better Auth's endpoint).
+- The audit and notification pages show UTC timestamps; household-local formatting is not done.

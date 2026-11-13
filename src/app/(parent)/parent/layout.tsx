@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 
 import { ParentShell } from "@/components/layout/parent-shell";
 import { SignOutButton } from "@/features/families/components/auth-forms";
+import { prisma } from "@/lib/db/prisma";
 import { getParentContext } from "@/server/policies/context";
+import { countUnread } from "@/server/services/notification.service";
 
 /**
  * Parent area gate. Authorization is enforced here on every request (the
@@ -13,8 +15,14 @@ export default async function ParentLayout({ children }: LayoutProps<"/parent">)
   const ctx = await getParentContext();
   if (!ctx) redirect("/sign-in?next=/parent");
   if (ctx.kind === "parent-no-family") redirect("/parent/onboarding");
+  const unreadCount = await countUnread(prisma, ctx);
   return (
-    <ParentShell familyName={ctx.familyName} userName={ctx.userName} signOut={<SignOutButton />}>
+    <ParentShell
+      familyName={ctx.familyName}
+      userName={ctx.userName}
+      signOut={<SignOutButton />}
+      unreadCount={unreadCount}
+    >
       {children}
     </ParentShell>
   );

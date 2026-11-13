@@ -9,6 +9,8 @@ const LINKS = [
   { href: "/child", label: "Today", icon: "☀️" },
   { href: "/child/goals", label: "Goals", icon: "🎯" },
   { href: "/child/adventure", label: "Adventure", icon: "🗺️" },
+  { href: "/child/rewards", label: "Shop", icon: "🎁" },
+  { href: "/child/achievements", label: "Badges", icon: "🏅" },
   { href: "/child/history", label: "History", icon: "📜" },
 ] as const;
 

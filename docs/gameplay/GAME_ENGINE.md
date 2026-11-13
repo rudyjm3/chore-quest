@@ -55,6 +55,13 @@ currencies COINS / XP) and items are `inventory_grant`s; both are idempotent via
 Per-activity drip (`adventure.config.perActivity`) is credited by the pipeline only while the child has
 an ACTIVE adventure. Levels derive from XP via `config.levelThresholds` (`levelForXp`).
 
+## Achievements and the child gallery
+
+`achievementDefinitionSchema` (per theme) has an optional `hint`: a spoiler-free nudge stored in `achievement_definition.hint`. The child
+gallery (`achievement.service`) shows the hint while an achievement is locked and only reveals its `description` once earned; `criteria` is
+never sent to the client. Without a `hint` the generic "Keep going…" text is used. Services, schema and shared components stay theme-neutral;
+the pirate wording lives in `src/game/themes/pirate/achievements.ts`.
+
 ## Puzzles
 
 A puzzle `type` maps to a `PuzzleVerifier` in `src/game/puzzles/registry.ts`. The client submits an
