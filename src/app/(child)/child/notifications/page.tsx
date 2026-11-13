@@ -21,6 +21,10 @@ export default async function ChildNotificationsPage({
   const page = await listNotifications(prisma, ctx, {
     cursor: parsed.success ? parsed.data : undefined,
   });
+  const family = await prisma.family.findUniqueOrThrow({
+    where: { id: ctx.familyId },
+    select: { timezone: true },
+  });
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-black">News from the crew</h1>
@@ -28,6 +32,7 @@ export default async function ChildNotificationsPage({
         page={page}
         variant="child"
         basePath="/child/notifications"
+        timeZone={family.timezone}
         linkFor={(entityType) => childLink(entityType)}
       />
     </div>

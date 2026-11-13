@@ -94,6 +94,23 @@ export function toLocalTime(instant: Date, timeZone: string): string {
   return `${pad(w.hour)}:${pad(w.minute)}`;
 }
 
+const zoneNameCache = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A readable household-local timestamp, "YYYY-MM-DD HH:mm EST", for an instant in `timeZone`.
+ * Never depends on the server's own zone. The zone abbreviation is the platform's short name
+ * (e.g. "EDT" or "GMT+9") so the reader can tell which side of a DST change it falls on.
+ */
+export function formatLocalDateTime(instant: Date, timeZone: string): string {
+  let names = zoneNameCache.get(timeZone);
+  if (!names) {
+    names = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" });
+    zoneNameCache.set(timeZone, names);
+  }
+  const zone = names.formatToParts(instant).find((p) => p.type === "timeZoneName")?.value ?? "";
+  return `${toLocalDate(instant, timeZone)} ${toLocalTime(instant, timeZone)}${zone ? ` ${zone}` : ""}`;
+}
+
 /** Offset of `timeZone` from UTC at `instant`, in minutes (east positive). */
 export function timeZoneOffsetMinutes(instant: Date, timeZone: string): number {
   const w = wallClock(instant, timeZone);

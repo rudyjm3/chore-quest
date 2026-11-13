@@ -32,6 +32,7 @@ export default async function ParentNotificationsPage({
         page={page}
         variant="parent"
         basePath="/parent/notifications"
+        timeZone={ctx.timezone}
         linkFor={(entityType) => parentLink(entityType)}
       />
     </>
