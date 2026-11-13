@@ -43,6 +43,7 @@ export default async function ChildInventoryPage() {
                   className="flex gap-3 rounded-2xl border-2 border-pirate-wood/30 bg-card p-3"
                 >
                   <ItemArt
+                    className="border-pirate-wood/30 bg-pirate-parchment"
                     asset={getItemAsset(row.item.adventure?.themeKey, row.item.iconKey)}
                     itemType={row.item.type}
                   />

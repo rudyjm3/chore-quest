@@ -285,26 +285,50 @@ describe("removing a step (ADR 0011)", () => {
   });
 });
 
-describe("constraints (violating input)", () => {
-  it("rejects two active steps with the same order or task, but allows them once one is retired", async () => {
+describe("reopening and materialization (review regressions)", () => {
+  it("a rejected run follows the current steps: added step appears, retired step is hidden", async () => {
     const s = await setup();
-    await expect(
-      db.routineStep.create({
-        data: { routineId: s.routine.id, taskId: s.tasks[2].id, sortOrder: 1 },
-      }),
-    ).rejects.toThrow();
-    await expect(
-      db.routineStep.create({
-        data: { routineId: s.routine.id, taskId: s.tasks[0].id, sortOrder: 9 },
-      }),
-    ).rejects.toThrow();
-    await add(s); // so step 0 can be retired
-    await remove(s, 0);
-    await expect(
-      db.routineStep.create({
-        data: { routineId: s.routine.id, taskId: s.tasks[0].id, sortOrder: 1 },
-      }),
-    ).resolves.toBeTruthy();
+    await completeRoutineStep(db, s.childCtx, s.today.id, s.steps[0].id);
+    await completeRoutineStep(db, s.childCtx, s.today.id, s.steps[1].id); // submitted
+    const { step: added } = await add(s); // skipped: run is submitted
+    await remove(s, 0); // retire A
+    await remove(s, 1); // retire B (added step remains required)
+    await reviewRoutineRun(db, s.ctx, {
+      familyId: s.family.id,
+      runId: s.today.id,
+      decision: "REJECTED",
+    });
+    const rows = await progressOf(s.today.id);
+    const active = rows.filter((p) => !p.step.retiredAt);
+    expect(active.map((p) => p.stepId)).toEqual([added.id]);
+    expect(active[0].status).toBe("PENDING");
+    // The child can redo and resubmit it.
+    await completeRoutineStep(db, s.childCtx, s.today.id, added.id);
+    expect((await runOf(s.today.id)).status).toBe("SUBMITTED");
+  });
+
+  it("a run that exists without progress rows is not half-initialized by an add", async () => {
+    const s = await setup();
+    await db.routineStepProgress.deleteMany({ where: { runId: s.tomorrow.id } }); // mid-materialization
+    const { step } = await add(s);
+    expect(await db.routineStepProgress.count({ where: { runId: s.tomorrow.id } })).toBe(0);
+    await ensureRoutineRuns(db, { familyId: s.family.id, from: DAY, to: NEXT });
+    const ids = (await progressOf(s.tomorrow.id)).map((p) => p.stepId).sort();
+    expect(ids).toEqual([...s.steps.map((x) => x.id), step.id].sort());
+  });
+
+  it("materialization racing an add always ends with every active step (looped)", async () => {
+    for (let round = 0; round < 6; round++) {
+      await resetHouseholdData(db);
+      const s = await setup();
+      await db.routineStepProgress.deleteMany({ where: { runId: s.tomorrow.id } });
+      await Promise.all([
+        add(s),
+        ensureRoutineRuns(db, { familyId: s.family.id, from: DAY, to: NEXT }),
+      ]);
+      await ensureRoutineRuns(db, { familyId: s.family.id, from: DAY, to: NEXT });
+      expect(await db.routineStepProgress.count({ where: { runId: s.tomorrow.id } })).toBe(3);
+    }
   });
 });
 

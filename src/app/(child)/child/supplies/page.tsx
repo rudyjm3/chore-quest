@@ -35,6 +35,7 @@ export default async function ChildSuppliesPage() {
                 <Card className="h-full border-2 border-pirate-wood/30" data-state={state.status}>
                   <CardContent className="flex gap-3">
                     <ItemArt
+                      className="border-pirate-wood/30 bg-pirate-parchment"
                       asset={getItemAsset(item.themeKey, item.iconKey)}
                       itemType={item.type}
                     />

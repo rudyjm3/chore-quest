@@ -270,7 +270,7 @@ single-balance race test fail (checked by mutation).
 - Child supply shop (`/child/supplies`) and treasure chest (`/child/inventory`); child nav gained a "More" menu. `purchaseItem` now enforces unlock requirements and family scope on the server (ADR 0012).
 - Photo privacy review drafted (`docs/development/PHOTO_REVIEW.md`, proposed, not approved).
 
-**Test counts** (`pnpm check`): unit 84, integration 157 (Phase 3: 75 / 114). E2E 51 passed, 10 skipped on the mobile project by design (new: routine step add/remove, supply shop purchase).
+**Test counts** (`pnpm check`): unit 84, integration 160 (Phase 3: 75 / 114). E2E 51 passed, 10 skipped on the mobile project by design (new: routine step add/remove, supply shop purchase).
 
 **Known limitations / left out**
 

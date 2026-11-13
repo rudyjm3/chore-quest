@@ -341,24 +341,37 @@ export async function ensureRoutineRuns(
   if (rows.length === 0) return { created: 0 };
   const result = await db.routineRun.createMany({ data: rows, skipDuplicates: true });
 
-  // Step progress rows for any run that lacks them (new runs only, in practice).
-  const runs = await db.routineRun.findMany({
-    where: {
-      familyId: params.familyId,
-      localDate: { gte: localDateToDb(params.from), lte: localDateToDb(params.to) },
-      stepProgress: { none: {} },
-    },
-    include: {
-      assignment: { include: { routine: { include: { steps: { where: { retiredAt: null } } } } } },
-    },
-  });
-  const stepRows: Prisma.RoutineStepProgressCreateManyInput[] = [];
-  for (const run of runs) {
-    for (const step of run.assignment.routine.steps)
-      stepRows.push({ runId: run.id, stepId: step.id });
-  }
-  if (stepRows.length)
-    await db.routineStepProgress.createMany({ data: stepRows, skipDuplicates: true });
+  // Step progress rows for runs that have none yet. This runs under the routine row lock, the same
+  // lock `addRoutineStep`/`removeRoutineStep` take first, so a run is never half initialized while a
+  // step edit looks at it: edits skip runs without rows and this fill reads the committed step list.
+  const routineIds = [
+    ...new Set(assignments.filter((a) => !a.routine.isArchived).map((a) => a.routineId)),
+  ];
+  const fill = async (tx: Prisma.TransactionClient) => {
+    for (const routineId of routineIds.sort()) {
+      await tx.$queryRaw`SELECT id FROM "routine" WHERE id = ${routineId}::uuid FOR UPDATE`;
+      const steps = await tx.routineStep.findMany({
+        where: { routineId, retiredAt: null },
+        select: { id: true },
+      });
+      const runs = await tx.routineRun.findMany({
+        where: {
+          familyId: params.familyId,
+          assignment: { routineId },
+          localDate: { gte: localDateToDb(params.from), lte: localDateToDb(params.to) },
+          stepProgress: { none: {} },
+        },
+        select: { id: true },
+      });
+      const stepRows: Prisma.RoutineStepProgressCreateManyInput[] = runs.flatMap((run) =>
+        steps.map((step) => ({ runId: run.id, stepId: step.id })),
+      );
+      if (stepRows.length)
+        await tx.routineStepProgress.createMany({ data: stepRows, skipDuplicates: true });
+    }
+  };
+  if ("$transaction" in db) await db.$transaction((tx) => fill(tx));
+  else await fill(db);
   return { created: result.count };
 }
 
@@ -506,6 +519,7 @@ async function lockOpenRuns(tx: Prisma.TransactionClient, routineId: string, tod
     JOIN "routine_assignment" a ON a.id = r."assignmentId"
     WHERE a."routineId" = ${routineId}::uuid
       AND r.status IN ('PENDING', 'IN_PROGRESS', 'REJECTED')
+      AND EXISTS (SELECT 1 FROM "routine_step_progress" p WHERE p."runId" = r.id)
       AND r."localDate" >= ${localDateToDb(today)}::date
     ORDER BY r.id
     FOR UPDATE OF r`;

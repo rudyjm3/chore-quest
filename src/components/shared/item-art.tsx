@@ -25,7 +25,7 @@ export function ItemArt({
   return (
     <span
       className={cn(
-        "flex size-16 shrink-0 items-center justify-center rounded-2xl border-2 border-pirate-wood/30 bg-pirate-parchment text-3xl",
+        "flex size-16 shrink-0 items-center justify-center rounded-2xl border-2 bg-muted text-3xl",
         className,
       )}
     >
