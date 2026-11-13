@@ -317,7 +317,10 @@ export async function listOccurrencesForChild(
       childId: params.childId,
       localDate: { gte: localDateToDb(params.from), lte: localDateToDb(params.to) },
     },
-    include: { assignment: { include: { task: true } }, submission: true },
+    include: {
+      assignment: { include: { task: true } },
+      submission: { include: { review: { select: { note: true } } } },
+    },
     orderBy: [{ localDate: "asc" }, { dueAt: "asc" }],
   });
 }

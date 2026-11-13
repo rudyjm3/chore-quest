@@ -2,6 +2,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { BulkApproveForm, type BulkItem } from "@/features/approvals/components/bulk-approve-form";
 import {
   ReviewOccurrenceButtons,
   ReviewRoutineRunButtons,
@@ -34,14 +35,35 @@ export default async function ApprovalsPage() {
     }),
   ]);
 
+  const bulkItems: BulkItem[] = [
+    ...occurrences.map((o) => ({
+      value: `occurrence:${o.id}`,
+      title: `${o.assignment.task.title} · ${o.child.displayName}`,
+      detail: `${dbToLocalDate(o.localDate)} · ${o.pointsSnapshot} points`,
+    })),
+    ...runs.map((r) => ({
+      value: `routine_run:${r.id}`,
+      title: `${r.assignment.routine.name} (routine) · ${r.child.displayName}`,
+      detail: `${dbToLocalDate(r.localDate)} · ${r.bonusPointsSnapshot} bonus points`,
+    })),
+  ];
+
   return (
     <>
       <PageHeader
         title="Approvals"
         description="Review what your children have marked as done. Approving creates a verified completion and awards points."
       />
+      {bulkItems.length > 1 ? (
+        <section className="mb-8 space-y-2" aria-labelledby="bulk-heading">
+          <h2 id="bulk-heading" className="font-semibold">
+            Approve several at once
+          </h2>
+          <BulkApproveForm items={bulkItems} />
+        </section>
+      ) : null}
       <section className="space-y-3" data-testid="pending-approvals">
-        <h2 className="font-semibold">Waiting for you</h2>
+        <h2 className="font-semibold">Review one by one</h2>
         {occurrences.length === 0 && runs.length === 0 ? (
           <EmptyState
             title="Nothing to review"
