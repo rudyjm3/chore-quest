@@ -64,6 +64,8 @@ export const chapterConfigSchema = z.object({
   locations: z.array(chapterLocationSchema).default([]),
   /** Scene asset key used by the renderer (resolved via the asset manifest). */
   sceneAssetKey: z.string().optional(),
+  /** Spoiler-free nudge about what to do next here; shown by the lighthouse. Static theme text. */
+  hint: z.string().min(1).max(200).optional(),
 });
 export type ChapterConfig = z.infer<typeof chapterConfigSchema>;
 

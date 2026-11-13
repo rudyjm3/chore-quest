@@ -1,6 +1,6 @@
-import type { AdventureDefinition, AssetEntry, AssetManifest } from "@/game/schemas";
+import type { AdventureDefinition, AssetEntry, AssetManifest, NpcDialogue } from "@/game/schemas";
 
-import { pirateAdventure, pirateAssetManifest } from "./pirate";
+import { pirateAdventure, pirateAssetManifest, pipDialogue } from "./pirate";
 
 /** Registry of authored adventure themes. The seed writes these to the database. */
 export const adventureThemes: Record<
@@ -25,4 +25,13 @@ export function getItemAsset(
 ): AssetEntry | null {
   if (!themeKey || !iconKey) return null;
   return getAssetManifest(themeKey)?.assets.find((a) => a.id === iconKey) ?? null;
+}
+
+/** Authored NPC dialogue per theme, keyed by `npcKey`. */
+const dialogues: Record<string, Record<string, NpcDialogue>> = {
+  pirate: { pip: pipDialogue },
+};
+
+export function getNpcDialogue(themeKey: string, npcKey: string): NpcDialogue | null {
+  return dialogues[themeKey]?.[npcKey] ?? null;
 }

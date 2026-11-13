@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { lighthouseHint } from "@/game/engine";
 import { buildQuestBoard } from "@/features/adventures/quest-board";
 import { getAdventureState, startAdventure } from "@/server/services/adventure.service";
 import { reviewOccurrence } from "@/server/services/approval.service";
@@ -69,5 +70,15 @@ describe("quest board data (getAdventureState + buildQuestBoard)", () => {
     const state = await getAdventureState(db, ctx, "pirate");
     expect(state.started).toBe(false);
     expect(buildQuestBoard(state.chapters)).toEqual([]);
+  });
+});
+
+describe("lighthouse hint from seeded chapter config", () => {
+  it("shows the Home Port hint to a new crew member and ignores other children", async () => {
+    const { a } = await twoChildren();
+    const state = await getAdventureState(db, a.ctx, "pirate");
+    const homePort = state.chapters.find((c) => c.key === "home-port");
+    expect(homePort?.hint).toBeTruthy();
+    expect(lighthouseHint(state.chapters)).toBe(homePort?.hint);
   });
 });

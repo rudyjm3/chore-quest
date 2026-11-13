@@ -49,6 +49,13 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
     expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await back.click();
 
+    // Pip's line and the lighthouse hint are static, theme-authored text.
+    await expect(child.getByTestId("npc-dialogue")).toContainText("Pip the Parrot");
+    await child.getByRole("link", { name: /Lighthouse/ }).click();
+    await expect(child.getByRole("heading", { name: "Lighthouse", exact: true })).toBeVisible();
+    await expect(child.getByTestId("lighthouse-hint")).not.toBeEmpty();
+    await child.getByRole("link", { name: "← Home Port" }).click();
+
     // Make sure Ava owns the captain's hat.
     await child.getByRole("link", { name: /Supply shop/ }).click();
     await expect(child.getByRole("heading", { name: "Supply shop" })).toBeVisible();
@@ -80,7 +87,12 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
   test("child pages reject anonymous visitors", async ({ browser }) => {
     const ctx = await browser.newContext(ANONYMOUS);
     const anon = await ctx.newPage();
-    for (const path of ["/child/port", "/child/port/quest-board", "/child/port/crew-camp"]) {
+    for (const path of [
+      "/child/port",
+      "/child/port/quest-board",
+      "/child/port/crew-camp",
+      "/child/port/lighthouse",
+    ]) {
       await anon.goto(path);
       await expect(anon).toHaveURL(/child\/sign-in/);
     }
