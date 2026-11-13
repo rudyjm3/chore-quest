@@ -162,6 +162,7 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
             kind: quest.kind,
             title: quest.title,
             description: quest.description,
+            rewards: questConfigSchema.parse(quest.config).rewards,
             status: qp?.status ?? "LOCKED",
             objectives: quest.objectives.map((objective) => {
               const op = qp?.objectives.find((o) => o.objectiveId === objective.id);

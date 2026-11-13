@@ -15,6 +15,7 @@ const PRIMARY = [
 
 /** Behind "More" so the bottom bar keeps big, uncrowded touch targets. */
 const MORE = [
+  { href: "/child/port", label: "Home Port", icon: "🏝️" },
   { href: "/child/inventory", label: "Treasure chest", icon: "🧰" },
   { href: "/child/rewards", label: "Reward shop", icon: "🎁" },
   { href: "/child/achievements", label: "Badges", icon: "🏅" },
