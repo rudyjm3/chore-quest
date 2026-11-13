@@ -19,3 +19,4 @@ export * as historyService from "./history.service";
 export * as invitationService from "./invitation.service";
 export * as notificationService from "./notification.service";
 export * as achievementService from "./achievement.service";
+export * as crewCampService from "./crew-camp.service";
