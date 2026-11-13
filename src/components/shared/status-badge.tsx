@@ -17,6 +17,9 @@ const STYLES: Record<string, string> = {
   LOCKED: "bg-muted text-muted-foreground",
   UNLOCKED: "bg-info/15 text-info",
   EXPIRED: "bg-muted text-muted-foreground",
+  REQUESTED: "bg-warning/25 text-foreground",
+  DENIED: "bg-danger/15 text-danger",
+  FULFILLED: "bg-success/20 text-success",
 };
 
 const LABELS: Record<string, string> = {
@@ -35,6 +38,9 @@ const LABELS: Record<string, string> = {
   LOCKED: "Locked",
   UNLOCKED: "Unlocked",
   EXPIRED: "Expired",
+  REQUESTED: "Waiting",
+  DENIED: "Not this time",
+  FULFILLED: "Given",
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {

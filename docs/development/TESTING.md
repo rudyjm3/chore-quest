@@ -35,6 +35,18 @@ mail failure) and the `family_invitation` constraints. E2E: preset browser, task
 history page, settings; sign-up verification, password reset and the invite → accept → remove flow (desktop project only, because auth endpoints
 are rate limited).
 
+Phase 3 additions — unit: `recomputeProgress`/`effectiveTarget`, audit summary rendering (known actions, unknown fallback, no raw JSON,
+tolerates wrong types, prefix validation). Integration: goal editing (target lowered completes once, raised keeps completed, archive/restore,
+per-assignment target, extending an expired assignment, weekly dates locked, cross-family), expiry job vs weekly roll-over, progress repair
+(corrupt the cached counters and prove the repair restores them for count and streak goals, idempotent, completes once), reward catalogue
+(audit, `stock >= 0` CHECK, cross-family), redemptions (reserve at request, insufficient points/stock, **raced** requests against one balance
+and for the last unit, deny refund once, **raced** double-resolve, fulfil ordering, refund-needs-debit CHECK), notifications (fan-out, privacy
+between recipients, dedupe, cursor pagination, one-recipient CHECK), bulk approve (partial failures, duplicates, re-send safe, size limit,
+cross-family), routine-run review notes, audit log (scoping, pagination, prefix not substring, date range, no metadata leak) and the
+achievement gallery (hint only while locked). The race tests loop six rounds each; removing the child/reward locks makes the
+single-balance race fail. E2E (`phase3.spec.ts`, desktop for mutating flows): goal edit/recalculate/archive/restore, reward add → child request
+→ parent decline with note → refund, notifications on both sides, audit log without raw JSON, child achievements hint, mobile "More" menu.
+
 ## Conventions
 
 - Fixtures in `tests/helpers/fixtures.ts` create families/children/tasks directly; use services for the

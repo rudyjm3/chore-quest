@@ -17,3 +17,22 @@ export async function signInAsParent(page: Page) {
   await page.waitForURL("**/parent");
   await expect(page.getByTestId("parent-shell")).toBeVisible();
 }
+
+/** Child sign-in on a fresh device (no cookies). Reads the family code from the parent UI. */
+export async function signInAsChild(
+  parentPage: Page,
+  childPage: Page,
+  childName: "Ava" | "Max",
+  pin: string,
+) {
+  await parentPage.goto("/parent/children");
+  const header = await parentPage.getByText(/Family code for child sign-in:/).textContent();
+  const familyCode = header?.split(":").pop()?.trim();
+  await childPage.goto("/child/sign-in");
+  await childPage.getByLabel("Family code").fill(familyCode!);
+  await childPage.getByRole("button", { name: "Find my crew" }).click();
+  await childPage.getByLabel(childName).check();
+  await childPage.getByLabel("Secret PIN").fill(pin);
+  await childPage.getByRole("button", { name: "Set sail!" }).click();
+  await childPage.waitForURL("**/child");
+}

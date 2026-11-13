@@ -7,17 +7,21 @@ dates are `date` columns.
 
 ## Migration history
 
-| #   | Migration                                        | Contents                                                                                                                                                                                                                                                                                        |
-| --- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `20261110161727_auth_families`                   | Better Auth tables (`user`, `session`, `account`, `verification`), `family`, `family_settings`, `family_member`, `child`, `child_credential`, `child_session`, `audit_log`                                                                                                                      |
-| 2   | `20261110161735_tasks_routines`                  | `task_preset`, `task`, `task_assignment`, `task_occurrence`, `routine_template`, `routine_template_step`, `routine`, `routine_step`, `routine_assignment`, `routine_run`, `routine_step_progress`                                                                                               |
-| 3   | `20261110161739_approvals_activity_completions`  | `task_submission`, `parent_review`, `activity_completion`                                                                                                                                                                                                                                       |
-| 4   | `20261110161744_goals`                           | `goal`, `goal_assignment`, `goal_contribution`, `goal_completion`                                                                                                                                                                                                                               |
-| 5   | `20261110161748_rewards_achievements`            | `reward_wallet`, `reward_ledger_entry`, `reward_definition`, `reward_redemption`, `achievement_definition`, `earned_achievement`                                                                                                                                                                |
-| 6   | `20261110161753_adventures_inventory`            | `adventure`, `adventure_chapter`, `adventure_quest`, `quest_objective`, `puzzle_definition`, `item_definition`, `child_adventure_progress`, `child_chapter_progress`, `quest_progress`, `objective_progress`, `quest_contribution`, `puzzle_attempt`, `child_inventory_item`, `inventory_grant` |
-| 7   | `20261110161821_integrity_constraints`           | Hand-written CHECK constraints and partial unique indexes (below)                                                                                                                                                                                                                               |
-| 8   | `20261112082815_family_invitations_email_outbox` | `family_invitation` (hashed-token guardian invites), `email_outbox` (dev email driver capture)                                                                                                                                                                                                  |
-| 9   | `20261112082817_family_invitation_constraints`   | Hand-written: guardian-only role CHECK, single-outcome CHECK, accepted-has-user CHECK, partial unique index `family_invitation_one_open_per_email`                                                                                                                                              |
+| #   | Migration                                                | Contents                                                                                                                                                                                                                                                                                        |
+| --- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `20261110161727_auth_families`                           | Better Auth tables (`user`, `session`, `account`, `verification`), `family`, `family_settings`, `family_member`, `child`, `child_credential`, `child_session`, `audit_log`                                                                                                                      |
+| 2   | `20261110161735_tasks_routines`                          | `task_preset`, `task`, `task_assignment`, `task_occurrence`, `routine_template`, `routine_template_step`, `routine`, `routine_step`, `routine_assignment`, `routine_run`, `routine_step_progress`                                                                                               |
+| 3   | `20261110161739_approvals_activity_completions`          | `task_submission`, `parent_review`, `activity_completion`                                                                                                                                                                                                                                       |
+| 4   | `20261110161744_goals`                                   | `goal`, `goal_assignment`, `goal_contribution`, `goal_completion`                                                                                                                                                                                                                               |
+| 5   | `20261110161748_rewards_achievements`                    | `reward_wallet`, `reward_ledger_entry`, `reward_definition`, `reward_redemption`, `achievement_definition`, `earned_achievement`                                                                                                                                                                |
+| 6   | `20261110161753_adventures_inventory`                    | `adventure`, `adventure_chapter`, `adventure_quest`, `quest_objective`, `puzzle_definition`, `item_definition`, `child_adventure_progress`, `child_chapter_progress`, `quest_progress`, `objective_progress`, `quest_contribution`, `puzzle_attempt`, `child_inventory_item`, `inventory_grant` |
+| 7   | `20261110161821_integrity_constraints`                   | Hand-written CHECK constraints and partial unique indexes (below)                                                                                                                                                                                                                               |
+| 8   | `20261112082815_family_invitations_email_outbox`         | `family_invitation` (hashed-token guardian invites), `email_outbox` (dev email driver capture)                                                                                                                                                                                                  |
+| 9   | `20261112082817_family_invitation_constraints`           | Hand-written: guardian-only role CHECK, single-outcome CHECK, accepted-has-user CHECK, partial unique index `family_invitation_one_open_per_email`                                                                                                                                              |
+| 10  | `20261113090000_phase3_notifications_reward_stock_hints` | `notification` (+ `NotificationKind`), `reward_definition.stock`, `reward_redemption.resolutionNote/refundEntryId`, `RewardSourceType.REDEMPTION_REFUND`, `achievement_definition.hint`                                                                                                         |
+| 11  | `20261113090100_phase3_constraints`                      | Hand-written: notification has exactly one recipient, `stock >= 0`, refund requires debit                                                                                                                                                                                                       |
+| 12  | `20261113090200_routine_run_review_note`                 | `routine_run.reviewNote` (parent note visible to the child)                                                                                                                                                                                                                                     |
+| 13  | `20261113090300_goal_assignment_target_override`         | `goal_assignment.targetOverride` + CHECK `> 0`                                                                                                                                                                                                                                                  |
 
 Workflow: edit the schema → `pnpm db:migrate --name <change>` (dev) → commit SQL → CI runs
 `prisma migrate deploy` and a drift check (`prisma migrate diff --from-config-datasource --to-schema`).
@@ -119,14 +123,27 @@ erDiagram
 - `goal_contribution` unique `(goalAssignmentId, completionId)`; partial unique index `goal_contribution_streak_day_uq` on
   `(goalAssignmentId, localDate) WHERE countedForStreak` guarantees at most one streak advance per day.
 - `goal_completion` unique per assignment; links to the reward ledger.
+- `goal_assignment.targetOverride` (CHECK `> 0`, null = goal target). The cached counters (`progressCount`, `currentStreak`, `bestStreak`,
+  `lastContributionDate`) are rebuildable from `goal_contribution` (see `docs/gameplay/GOALS.md`).
 
 ### Rewards
 
 - `reward_wallet` unique `(childId, currency)`, CHECK `balance >= 0`.
 - `reward_ledger_entry`: unique `sourceKey` (idempotency), unique `(sourceType, sourceId, currency)`, CHECK `amount <> 0`,
   CHECK `balanceAfter >= 0`. Always written in the same transaction as the wallet update.
-- `reward_definition` / `reward_redemption` (debit ledger entry linked once approved).
-- `achievement_definition` (unique `key`, `adventureKey` null = platform-wide) / `earned_achievement` unique `(childId, achievementId)`.
+- `reward_definition`: optional `stock` (null = unlimited, CHECK `>= 0`), archived with `isActive`. `reward_redemption`: price snapshot in
+  `costPoints`; the debit entry (`ledgerEntryId`) is written **at request time**, a denial writes a refund entry (`refundEntryId`, type
+  `REDEMPTION_REFUND`, CHECK refund requires debit); `resolutionNote` is the parent note shown to the child (ADR 0010).
+- `achievement_definition` (unique `key`, `adventureKey` null = platform-wide, `hint` = spoiler-free text shown while locked) / `earned_achievement` unique `(childId, achievementId)`.
+
+### Notifications and audit
+
+- `notification`: `familyId`, exactly one of `recipientUserId`/`recipientChildId` (CHECK `notification_one_recipient_chk`), `kind`, `title`,
+  `body`, `entityType/entityId`, `dedupeKey` (unique per recipient; written with `skipDuplicates`), `readAt`. Indexed
+  `(familyId, recipient, createdAt desc, id desc)` for cursor pagination and `(familyId, recipient, readAt)` for unread counts (ADR 0009).
+- `audit_log` is read through `listAuditLog` (cursor on `createdAt desc, id desc`, action-prefix and date-range filters); `metadata` is
+  never returned to the UI, only a rendered summary.
+- `routine_run.reviewNote`: latest parent note on approve/reject; for task occurrences the note lives on `parent_review.note`.
 
 ### Adventure and inventory
 
@@ -141,7 +158,8 @@ erDiagram
 
 ## Transactions and locking
 
-- Approval: `SELECT … FOR UPDATE` on the occurrence/run row, then status re-check → idempotent.
+- Approval: `SELECT … FOR UPDATE` on the occurrence/run row, then status re-check → idempotent. Bulk approval is one transaction per item.
+- Redemptions: lock order is always child row → reward row; the redemption is re-read inside the lock (ADR 0010).
 - Pipeline and all wallet/inventory/progress writes: `lockChildRow(tx, childId)` serializes per child.
 - Inside PostgreSQL interactive transactions a failed statement aborts the transaction, so services check-then-insert
   under the lock (or use `createMany({ skipDuplicates })`) instead of catching unique violations.
