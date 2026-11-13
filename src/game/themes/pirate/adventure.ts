@@ -75,6 +75,8 @@ const definition: AdventureDefinitionInput = {
             kind: "landmark",
             position: { x: 10, y: 85 },
             description: "Something glints behind the rocks...",
+            requiresItemKey: "map-fragment",
+            reward: { itemKey: "cove-pearl", quantity: 1 },
           },
         ],
       },

@@ -55,6 +55,16 @@ export const pirateItems: ItemDefinitionInput[] = [
     maxQuantity: 1,
     config: {},
   },
+  {
+    key: "cove-pearl",
+    name: "Cove Pearl",
+    description: "A glowing pearl from the hidden cove. Only sharp-eyed captains find it.",
+    type: "COLLECTIBLE",
+    rarity: "UNCOMMON",
+    iconKey: "item.cove-pearl",
+    maxQuantity: 1,
+    config: {},
+  },
   // --- Ships (tiers) ---
   {
     key: "ship-starter",

@@ -56,6 +56,18 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
     await expect(child.getByTestId("lighthouse-hint")).not.toBeEmpty();
     await child.getByRole("link", { name: "← Home Port" }).click();
 
+    // Hidden cove: locked, available or already found depending on earlier runs; never an error.
+    await child.getByRole("link", { name: /Hidden cove/ }).click();
+    const cove = child.getByTestId("cove-state");
+    await expect(cove).toBeVisible();
+    const coveState = await cove.getAttribute("data-state");
+    expect(["locked", "available", "found"]).toContain(coveState);
+    if (coveState === "available") {
+      await child.getByTestId("visit-location").click();
+      await expect(cove).toHaveAttribute("data-state", "found");
+    }
+    await child.getByRole("link", { name: "← Home Port" }).click();
+
     // Make sure Ava owns the captain's hat.
     await child.getByRole("link", { name: /Supply shop/ }).click();
     await expect(child.getByRole("heading", { name: "Supply shop" })).toBeVisible();
@@ -92,6 +104,7 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
       "/child/port/quest-board",
       "/child/port/crew-camp",
       "/child/port/lighthouse",
+      "/child/port/hidden-cove",
     ]) {
       await anon.goto(path);
       await expect(anon).toHaveURL(/child\/sign-in/);

@@ -34,6 +34,12 @@ export const sourceKeys = {
   purchaseItem: (purchaseId: string, itemKey: string) => `purchase:${purchaseId}:item:${itemKey}`,
   adventureStartItem: (adventureProgressId: string, itemKey: string) =>
     `adventure-start:${adventureProgressId}:item:${itemKey}`,
+  locationItem: (
+    adventureProgressId: string,
+    chapterKey: string,
+    locationKey: string,
+    itemKey: string,
+  ) => `location:${adventureProgressId}:${chapterKey}:${locationKey}:item:${itemKey}`,
   parentAdjustment: (adjustmentId: string, currency: Currency) =>
     `adjustment:${adjustmentId}:${currency}`,
   parentGrant: (grantId: string, itemKey: string) => `parent-grant:${grantId}:item:${itemKey}`,

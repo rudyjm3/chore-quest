@@ -12,6 +12,7 @@ import {
   purchaseItemSchema,
   startAdventureSchema,
   submitPuzzleSchema,
+  visitLocationSchema,
 } from "@/lib/validation/adventures";
 import { childSignInSchema, familyCodeLookupSchema } from "@/lib/validation/families";
 import { formToObject, parseOrThrow } from "@/lib/validation/form";
@@ -27,6 +28,7 @@ import {
   signInChild,
 } from "@/server/services/child.service";
 import { equipCosmetic } from "@/server/services/crew-camp.service";
+import { visitLocation } from "@/server/services/location.service";
 import { purchaseItem } from "@/server/services/inventory.service";
 
 // --- Child sign-in -----------------------------------------------------------
@@ -135,5 +137,15 @@ export async function equipCosmeticAction(_prev: ActionResult<unknown> | null, f
     });
     revalidatePath("/child/port", "layout");
     return { equipped: result.equipped };
+  });
+}
+
+export async function visitLocationAction(_prev: ActionResult<unknown> | null, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireChildContext();
+    const input = parseOrThrow(visitLocationSchema, formToObject(formData));
+    const result = await visitLocation(prisma, ctx, { adventureKey: "pirate", ...input });
+    revalidatePath("/child", "layout");
+    return { granted: result.granted };
   });
 }

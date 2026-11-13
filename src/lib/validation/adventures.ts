@@ -30,3 +30,8 @@ export const equipCosmeticSchema = z.object({
   /** Empty string means "take it off". */
   itemKey: z.string().trim().max(64).default(""),
 });
+
+export const visitLocationSchema = z.object({
+  chapterKey: z.string().min(1).max(64),
+  locationKey: z.string().min(1).max(64),
+});

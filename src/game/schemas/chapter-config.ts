@@ -52,6 +52,10 @@ export const chapterLocationSchema = z.object({
   puzzleKey: z.string().optional(),
   npcKey: z.string().optional(),
   description: z.string().optional(),
+  /** The child must currently hold at least one of this item to use the location (ADR 0014). */
+  requiresItemKey: z.string().optional(),
+  /** One-time item reward granted on the first visit, through grantItem (ADR 0014). */
+  reward: itemRewardSchema.optional(),
 });
 export type ChapterLocation = z.infer<typeof chapterLocationSchema>;
 

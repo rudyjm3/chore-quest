@@ -30,6 +30,12 @@ const PLACES = [
     text: "Look out to sea for a hint.",
   },
   {
+    href: "/child/port/hidden-cove",
+    icon: "🌊",
+    title: "Hidden cove",
+    text: "Something glints behind the rocks.",
+  },
+  {
     href: "/child/supplies",
     icon: "⚓",
     title: "Supply shop",
