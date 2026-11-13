@@ -280,3 +280,5 @@ single-balance race test fail (checked by mutation).
 - B3 not built: quest board, crew camp, lighthouse, hidden cove and Pip dialogue are a design note in `docs/gameplay/PIRATE_ADVENTURE.md`.
 - Removing a step from a run that is still untouched leaves it open; a step added after a run was submitted applies only from the next unfinished run.
 - The "fresh clone into a scratch directory following the README" step was not done in this session.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
