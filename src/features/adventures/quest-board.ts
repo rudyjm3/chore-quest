@@ -34,10 +34,13 @@ export interface QuestBoardSection {
   quests: BoardQuest[];
 }
 
-/** Chapters the child can play (unlocked or in progress) with their ACTIVE quests, main quests first. */
+/**
+ * Reached chapters (anything but LOCKED, completed ones included: finishing the main quest does not
+ * close optional quests, and the engine keeps feeding them) with their ACTIVE quests, main first.
+ */
 export function buildQuestBoard(chapters: BoardChapter[]): QuestBoardSection[] {
   return chapters
-    .filter((c) => c.status === "UNLOCKED" || c.status === "IN_PROGRESS")
+    .filter((c) => c.status !== "LOCKED")
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((c) => ({
       chapterKey: c.key,
