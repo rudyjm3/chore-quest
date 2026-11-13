@@ -1,5 +1,7 @@
 # Roadmap
 
+The consolidated list of deliberately unfinished items is in [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md).
+
 Status key: ✅ done · 🟡 partial · ⬜ not started. Dependencies are listed per phase.
 
 ## Phase 1 — Foundation (this milestone) ✅
