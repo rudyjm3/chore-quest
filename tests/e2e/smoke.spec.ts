@@ -248,6 +248,7 @@ test.describe("child flow", () => {
     await expect(child.getByTestId("child-nav")).toBeVisible();
     await expect(child.getByTestId("today-chores")).toBeVisible();
 
+    await child.getByRole("button", { name: "More" }).click();
     await child.getByRole("link", { name: /History/ }).click();
     await expect(child).toHaveURL(/\/child\/history$/);
     await expect(child.getByRole("heading", { name: "My history" })).toBeVisible();
