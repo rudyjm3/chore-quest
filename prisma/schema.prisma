@@ -1463,5 +1463,7 @@ model Notification {
   @@index([familyId, recipientChildId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([familyId, recipientUserId, readAt])
   @@index([familyId, recipientChildId, readAt])
+  /// Retention job (ADR 0009): scans old rows across families in createdAt order.
+  @@index([createdAt])
   @@map("notification")
 }

@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { localDateToDb } from "@/lib/utils/dates";
 import { assignGoal, createGoal } from "@/server/services/goal.service";
 import { runScheduledMaintenance } from "@/server/services/maintenance.service";
+import { pruneNotifications } from "@/server/services/notification.service";
 import { assignTask } from "@/server/services/task.service";
 
 import { disconnectTestDb, resetHouseholdData, testDb } from "../helpers/db";
@@ -132,5 +133,60 @@ describe("scheduled maintenance", () => {
       (await db.activityCompletion.findUniqueOrThrow({ where: { id: completion.id } }))
         .processingStatus,
     ).toBe("PROCESSED");
+  });
+});
+
+describe("notification retention", () => {
+  const day = 86_400_000;
+  async function seed(familyId: string, userId: string, ageDays: number, read: boolean, n: number) {
+    const createdAt = new Date(NOW.getTime() - ageDays * day);
+    await db.notification.createMany({
+      data: Array.from({ length: n }, (_, i) => ({
+        familyId,
+        recipientUserId: userId,
+        kind: "SUBMISSION_PENDING" as const,
+        title: `n-${ageDays}-${read}-${i}`,
+        dedupeKey: `k-${ageDays}-${read}-${i}`,
+        createdAt,
+        readAt: read ? createdAt : null,
+      })),
+    });
+  }
+
+  it("deletes only old rows, read at 90 days and unread at 180, in every family, and is idempotent", async () => {
+    const a = await createFamilyFixture(db);
+    const b = await createFamilyFixture(db);
+    for (const f of [a, b]) {
+      await seed(f.family.id, f.ctx.userId, 100, true, 2); // old read: delete
+      await seed(f.family.id, f.ctx.userId, 80, true, 2); // recent read: keep
+      await seed(f.family.id, f.ctx.userId, 100, false, 2); // unread, inside 180: keep
+      await seed(f.family.id, f.ctx.userId, 200, false, 2); // old unread: delete
+      await seed(f.family.id, f.ctx.userId, 1, false, 1); // fresh: keep
+    }
+    const first = await runScheduledMaintenance(db, { now: NOW });
+    expect(first.notificationsPruned).toBe(8);
+    const left = await db.notification.findMany({ select: { title: true, familyId: true } });
+    expect(left).toHaveLength(10);
+    expect(left.some((n) => n.title.startsWith("n-200") || n.title === "n-100-true-0")).toBe(false);
+    expect(new Set(left.map((n) => n.familyId))).toEqual(new Set([a.family.id, b.family.id]));
+    const second = await runScheduledMaintenance(db, { now: NOW });
+    expect(second.notificationsPruned).toBe(0);
+    expect(await db.notification.count()).toBe(10);
+  });
+
+  it("works through large backlogs in bounded batches", async () => {
+    const f = await createFamilyFixture(db);
+    await seed(f.family.id, f.ctx.userId, 120, true, 25);
+    const first = await pruneNotifications(db, { now: NOW, batchSize: 10, maxBatches: 2 });
+    expect(first).toBe(20); // bounded: two batches of 10
+    expect(await db.notification.count()).toBe(5);
+    expect(await pruneNotifications(db, { now: NOW, batchSize: 10, maxBatches: 2 })).toBe(5);
+    expect(await db.notification.count()).toBe(0);
+  });
+
+  it("exactly at the cutoff is kept (strictly older rows only)", async () => {
+    const f = await createFamilyFixture(db);
+    await seed(f.family.id, f.ctx.userId, 90, true, 1);
+    expect(await pruneNotifications(db, { now: NOW })).toBe(0);
   });
 });

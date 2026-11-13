@@ -32,3 +32,7 @@ under 13 must not be sent anything outside the app.
 - A future email/push channel can read the same rows (a job selects unread rows older than N minutes) without changing producers.
 - Notification rows are never edited, only marked read; retention is the same as the family's other history (cascade on family/child/user
   deletion).
+
+## Retention (Phase 3 follow-up)
+
+The hourly maintenance job (ADR 0007) calls `pruneNotifications`: read notifications older than 90 days and unread ones older than 180 days (by `createdAt`) are deleted in id-limited batches of 500, at most 20 batches per run (the next hourly run continues). It is family-neutral, idempotent, and reports `notificationsPruned` in the job summary. The windows are constants in `notification.service.ts`; there is deliberately no env override yet (it would need the full env-var checklist).

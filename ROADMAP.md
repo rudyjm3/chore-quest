@@ -47,8 +47,9 @@ Depends on: Phase 2 (history pages and scheduled job are done). Delivered on the
 - ✅ Parent audit log view (OWNER/GUARDIAN, cursor, action-prefix and date-range filters, readable summaries)
 - ✅ Parent "sign out everywhere" (Phase 2 carry-over); server session reads now bypass the cookie cache so revocation is immediate
 - ⬜ Real email provider (Phase 2 carry-over): needs an account and API key from a provider; nothing was signed up for. Steps in `docs/development/EMAIL.md`
-- ⬜ Adding/removing steps of an existing routine (Phase 2 carry-over): needs an ADR for reconciling existing `routine_step_progress` rows first
-- ⬜ Not in scope, noted for later: child cancelling their own reward request, notification email/push, retention job for notifications
+- ✅ Adding/removing steps of an existing routine (Phase 2 carry-over): steps are retired, never deleted; unfinished runs from today on are reconciled (ADR 0011)
+- ✅ Child can cancel their own open reward request (refund, stock restored); audit and notification times shown in household-local time; notification retention job (read 90 d / unread 180 d)
+- ⬜ Not in scope, noted for later: notification email/push
 
 ## Phase 4 — Pirate Adventure 🟡
 

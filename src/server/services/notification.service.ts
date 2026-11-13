@@ -109,3 +109,59 @@ export async function markNotificationsRead(db: DbClient, ctx: Recipient, ids?: 
   });
   return { updated: result.count };
 }
+
+/** Read notifications are deleted this many days after they were created. */
+export const READ_NOTIFICATION_RETENTION_DAYS = 90;
+/** Unread ones live longer, so a child on holiday does not lose news they never saw. */
+export const UNREAD_NOTIFICATION_RETENTION_DAYS = 180;
+export const NOTIFICATION_PRUNE_BATCH = 500;
+/** Upper bound of batches per run; the hourly job simply continues next time. */
+export const NOTIFICATION_PRUNE_MAX_BATCHES = 20;
+
+/**
+ * Retention for in-app notifications (ADR 0009): delete read rows older than the read window and
+ * unread rows older than the longer unread window, in id-limited batches. Family-neutral (the
+ * rules do not depend on a family), bounded per run and idempotent: a second run finds nothing.
+ */
+export async function pruneNotifications(
+  db: DbClient,
+  options: {
+    now?: Date;
+    readDays?: number;
+    unreadDays?: number;
+    batchSize?: number;
+    maxBatches?: number;
+  } = {},
+) {
+  const now = options.now ?? new Date();
+  const dayMs = 86_400_000;
+  const readBefore = new Date(
+    now.getTime() - (options.readDays ?? READ_NOTIFICATION_RETENTION_DAYS) * dayMs,
+  );
+  const unreadBefore = new Date(
+    now.getTime() - (options.unreadDays ?? UNREAD_NOTIFICATION_RETENTION_DAYS) * dayMs,
+  );
+  const batchSize = options.batchSize ?? NOTIFICATION_PRUNE_BATCH;
+  const maxBatches = options.maxBatches ?? NOTIFICATION_PRUNE_MAX_BATCHES;
+  let deleted = 0;
+  for (let batch = 0; batch < maxBatches; batch++) {
+    const rows = await db.notification.findMany({
+      where: {
+        OR: [
+          { readAt: { not: null }, createdAt: { lt: readBefore } },
+          { readAt: null, createdAt: { lt: unreadBefore } },
+        ],
+      },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+      take: batchSize,
+    });
+    if (rows.length === 0) break;
+    const result = await db.notification.deleteMany({
+      where: { id: { in: rows.map((r) => r.id) } },
+    });
+    deleted += result.count;
+    if (rows.length < batchSize) break;
+  }
+  return deleted;
+}

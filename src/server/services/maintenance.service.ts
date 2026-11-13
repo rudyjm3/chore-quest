@@ -3,6 +3,7 @@ import { pruneOutbox } from "@/lib/email/dev-driver";
 import { log } from "@/lib/logging";
 import { addDays, localDateToDb, todayIn, type LocalDate } from "@/lib/utils/dates";
 
+import { pruneNotifications } from "./notification.service";
 import { reprocessPendingCompletions } from "./progression.service";
 import { ensureRoutineRuns } from "./routine.service";
 import { ensureTaskOccurrences } from "./task.service";
@@ -18,6 +19,7 @@ export interface MaintenanceSummary {
   goalAssignmentsExpired: number;
   completionsReprocessed: number;
   outboxPruned: number;
+  notificationsPruned: number;
   familyFailures: number;
 }
 
@@ -66,6 +68,7 @@ export async function runScheduledMaintenance(
     goalAssignmentsExpired: 0,
     completionsReprocessed: 0,
     outboxPruned: 0,
+    notificationsPruned: 0,
     familyFailures: 0,
   };
 
@@ -105,5 +108,6 @@ export async function runScheduledMaintenance(
   const results = await reprocessPendingCompletions(db, 100);
   summary.completionsReprocessed = results.length;
   summary.outboxPruned = await pruneOutbox(db, 7, options.now);
+  summary.notificationsPruned = await pruneNotifications(db, { now: options.now });
   return summary;
 }
