@@ -3,6 +3,7 @@ import type { AchievementDefinitionInput } from "@/game/schemas";
 export const pirateAchievements: AchievementDefinitionInput[] = [
   {
     key: "pirate.first-chore",
+    hint: "Every pirate starts with one good deed.",
     title: "Deckhand",
     description: "Complete your very first approved chore.",
     iconKey: "achievement.deckhand",
@@ -12,6 +13,7 @@ export const pirateAchievements: AchievementDefinitionInput[] = [
   },
   {
     key: "pirate.ten-chores",
+    hint: "Keep the ship ticking along day after day.",
     title: "Able Seaman",
     description: "Complete ten approved chores.",
     iconKey: "achievement.able-seaman",
@@ -21,6 +23,7 @@ export const pirateAchievements: AchievementDefinitionInput[] = [
   },
   {
     key: "pirate.first-routine",
+    hint: "A tidy ship starts with a tidy morning.",
     title: "Ship Shape",
     description: "Complete a whole routine.",
     iconKey: "achievement.ship-shape",
@@ -30,6 +33,7 @@ export const pirateAchievements: AchievementDefinitionInput[] = [
   },
   {
     key: "pirate.set-sail",
+    hint: "Finish your first chapter of the adventure.",
     title: "Anchors Aweigh",
     description: "Leave Home Port for the first time.",
     iconKey: "achievement.anchors-aweigh",
@@ -39,6 +43,7 @@ export const pirateAchievements: AchievementDefinitionInput[] = [
   },
   {
     key: "pirate.compass-found",
+    hint: "Pip the parrot knows something about directions…",
     title: "True North",
     description: "Solve the compass puzzle on Parrot Island.",
     iconKey: "achievement.true-north",

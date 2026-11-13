@@ -57,3 +57,32 @@ export const assignGoalSchema = z.object({
   endDate: localDateSchema.optional(),
 });
 export type AssignGoalInput = z.infer<typeof assignGoalSchema>;
+
+export const updateGoalSchema = z.object({
+  familyId: uuidSchema,
+  goalId: uuidSchema,
+  title: shortTextSchema,
+  description: longTextSchema.optional(),
+  targetCount: z.number().int().min(1).max(10_000),
+  rewardPoints: pointsSchema.default(0),
+  rewardDescription: z.string().trim().max(200).optional(),
+});
+export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
+
+export const setGoalArchivedSchema = z.object({
+  familyId: uuidSchema,
+  goalId: uuidSchema,
+  archived: z.boolean(),
+});
+
+export const updateGoalAssignmentSchema = z.object({
+  familyId: uuidSchema,
+  assignmentId: uuidSchema,
+  startDate: localDateSchema.optional(),
+  endDate: localDateSchema.nullable().optional(),
+  /** Per-assignment target; null clears the override. */
+  targetCount: z.number().int().min(1).max(10_000).nullable().optional(),
+  /** Household-local "today", used to decide whether an expired assignment is live again. */
+  today: localDateSchema,
+});
+export type UpdateGoalAssignmentInput = z.infer<typeof updateGoalAssignmentSchema>;

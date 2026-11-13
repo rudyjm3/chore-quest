@@ -22,3 +22,13 @@ export const reviewRoutineRunSchema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
   note: z.string().trim().max(300).optional(),
 });
+
+export const bulkApproveSchema = z.object({
+  familyId: uuidSchema,
+  items: z
+    .array(z.object({ kind: z.enum(["occurrence", "routine_run"]), id: uuidSchema }))
+    .min(1)
+    .max(50),
+  note: z.string().trim().max(300).optional(),
+});
+export type BulkApproveInput = z.infer<typeof bulkApproveSchema>;

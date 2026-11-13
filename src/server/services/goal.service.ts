@@ -1,6 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { applyContribution, completionMatchesGoal, goalPeriodKey } from "@/features/goals/progress";
-import type { DbClient } from "@/lib/db/prisma";
+import {
+  applyContribution,
+  completionMatchesGoal,
+  effectiveTarget,
+  goalPeriodKey,
+  recomputeProgress,
+} from "@/features/goals/progress";
+import { lockChildRow, type DbClient } from "@/lib/db/prisma";
 import { AppError } from "@/lib/errors";
 import {
   dbToLocalDate,
@@ -12,7 +18,12 @@ import {
   type LocalDate,
 } from "@/lib/utils/dates";
 import { sourceKeys } from "@/lib/utils/source-keys";
-import type { AssignGoalInput, CreateGoalInput } from "@/lib/validation/goals";
+import type {
+  AssignGoalInput,
+  CreateGoalInput,
+  UpdateGoalAssignmentInput,
+  UpdateGoalInput,
+} from "@/lib/validation/goals";
 import type { ParentContext } from "@/server/policies/context";
 import { assertFamilyScope, assertPermission } from "@/server/policies/family-access";
 
@@ -99,15 +110,24 @@ export async function assignGoal(db: DbClient, ctx: ParentContext, input: Assign
 
 export async function listGoalsForChild(db: DbClient, familyId: string, childId: string) {
   return db.goalAssignment.findMany({
-    where: { familyId, childId, status: { in: ["ACTIVE", "COMPLETED"] } },
+    where: {
+      familyId,
+      childId,
+      status: { in: ["ACTIVE", "COMPLETED"] },
+      goal: { isArchived: false },
+    },
     include: { goal: true },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
 }
 
-export async function listGoals(db: DbClient, familyId: string) {
+export async function listGoals(
+  db: DbClient,
+  familyId: string,
+  options: { archived?: boolean } = {},
+) {
   return db.goal.findMany({
-    where: { familyId, isArchived: false },
+    where: { familyId, isArchived: options.archived ?? false },
     include: { assignments: { include: { child: { select: { id: true, displayName: true } } } } },
     orderBy: { createdAt: "desc" },
   });
@@ -197,7 +217,7 @@ export async function applyCompletionToGoals(
 
     const update = applyContribution(
       goal.type,
-      goal.targetCount,
+      effectiveTarget(goal.targetCount, target.targetOverride),
       {
         progressCount: target.progressCount,
         currentStreak: target.currentStreak,
@@ -232,29 +252,330 @@ export async function applyCompletionToGoals(
     });
 
     if (update.completed) {
-      const goalCompletion = await tx.goalCompletion.create({
-        data: {
-          familyId: completion.familyId,
-          goalAssignmentId: target.id,
-          childId: completion.childId,
-          pointsAwarded: goal.rewardPoints,
-        },
-      });
-      if (goal.rewardPoints > 0) {
-        await postLedgerEntry(tx, {
-          familyId: completion.familyId,
-          childId: completion.childId,
-          currency: "POINTS",
-          amount: goal.rewardPoints,
-          sourceType: "GOAL_COMPLETION",
-          sourceId: goalCompletion.id,
-          sourceKey: sourceKeys.goalReward(goalCompletion.id, "POINTS"),
-          description: `Goal reached: ${goal.title}`,
-          goalCompletionId: goalCompletion.id,
-        });
-      }
+      await awardGoalCompletion(tx, target, goal);
     }
     touched.push({ goalAssignmentId: target.id, completed: update.completed });
   }
   return touched;
+}
+
+/**
+ * Record the one-per-assignment GoalCompletion and credit its reward. Idempotent: the unique
+ * goalAssignmentId and the ledger sourceKey both guard against a second award. Caller holds the
+ * child row lock.
+ */
+async function awardGoalCompletion(
+  tx: Prisma.TransactionClient,
+  assignment: { id: string; familyId: string; childId: string },
+  goal: { title: string; rewardPoints: number },
+) {
+  const existing = await tx.goalCompletion.findUnique({
+    where: { goalAssignmentId: assignment.id },
+  });
+  const goalCompletion =
+    existing ??
+    (await tx.goalCompletion.create({
+      data: {
+        familyId: assignment.familyId,
+        goalAssignmentId: assignment.id,
+        childId: assignment.childId,
+        pointsAwarded: goal.rewardPoints,
+      },
+    }));
+  if (goal.rewardPoints > 0) {
+    await postLedgerEntry(tx, {
+      familyId: assignment.familyId,
+      childId: assignment.childId,
+      currency: "POINTS",
+      amount: goalCompletion.pointsAwarded,
+      sourceType: "GOAL_COMPLETION",
+      sourceId: goalCompletion.id,
+      sourceKey: sourceKeys.goalReward(goalCompletion.id, "POINTS"),
+      description: `Goal reached: ${goal.title}`,
+      goalCompletionId: goalCompletion.id,
+    });
+  }
+  return goalCompletion;
+}
+
+// ---------------------------------------------------------------------------
+// Goal management (Phase 3)
+//
+// Reset rules (see docs/gameplay/GOALS.md):
+//  - recurrence NONE: one assignment per child; it never resets.
+//  - recurrence WEEKLY (weekly-count goals only): every household week is its own assignment with
+//    counters starting at zero. A new week's assignment is created by the first eligible
+//    completion after the previous week closed, whether that week was ACTIVE, COMPLETED or
+//    EXPIRED (the scheduled job marks past-due weeks EXPIRED; rolling forward keeps working).
+//  - Streak goals do not reset on a calendar: a missed day restarts the current streak on the
+//    next contribution; the best streak is kept.
+// ---------------------------------------------------------------------------
+
+/**
+ * Edit a goal. Title, description, reward and target can change at any time; the type,
+ * recurrence and eligibility filters are fixed once created (create a new goal and archive the
+ * old one instead) so history is never reinterpreted. A new target applies to every ACTIVE
+ * assignment that has no override of its own: lowering it below existing progress completes
+ * them (and pays the reward once). COMPLETED/EXPIRED assignments keep their result. A reward
+ * change only affects completions that happen afterwards.
+ */
+export async function updateGoal(db: DbClient, ctx: ParentContext, input: UpdateGoalInput) {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canManageTasks");
+  const existing = await db.goal.findFirst({ where: { id: input.goalId, familyId: ctx.familyId } });
+  if (!existing) throw AppError.notFound("Goal");
+
+  const goal = await db.goal.update({
+    where: { id: existing.id },
+    data: {
+      title: input.title,
+      description: input.description ?? null,
+      targetCount: input.targetCount,
+      rewardPoints: input.rewardPoints,
+      rewardDescription: input.rewardDescription ?? null,
+    },
+  });
+  await recordAudit(db, {
+    familyId: ctx.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action: "goal.update",
+    entityType: "Goal",
+    entityId: goal.id,
+    metadata: {
+      title: goal.title,
+      targetCount: goal.targetCount,
+      previousTargetCount: existing.targetCount,
+      rewardPoints: goal.rewardPoints,
+    },
+  });
+
+  if (existing.targetCount !== goal.targetCount || existing.rewardPoints !== goal.rewardPoints) {
+    const active = await db.goalAssignment.findMany({
+      where: { goalId: goal.id, familyId: ctx.familyId, status: "ACTIVE", targetOverride: null },
+      select: { id: true },
+    });
+    for (const assignment of active) {
+      await repairGoalAssignment(db, ctx.familyId, assignment.id);
+    }
+  }
+  return goal;
+}
+
+export async function setGoalArchived(
+  db: DbClient,
+  ctx: ParentContext,
+  input: { familyId: string; goalId: string; archived: boolean },
+) {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canManageTasks");
+  const existing = await db.goal.findFirst({ where: { id: input.goalId, familyId: ctx.familyId } });
+  if (!existing) throw AppError.notFound("Goal");
+  if (existing.isArchived === input.archived) return existing;
+  const goal = await db.goal.update({
+    where: { id: existing.id },
+    data: { isArchived: input.archived },
+  });
+  await recordAudit(db, {
+    familyId: ctx.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action: input.archived ? "goal.archive" : "goal.restore",
+    entityType: "Goal",
+    entityId: goal.id,
+    metadata: { title: goal.title },
+  });
+  return goal;
+}
+
+/**
+ * Edit one child's assignment: its own target and, for non-recurring goals, its dates.
+ * Weekly assignments are pinned to their household week, so their dates are fixed.
+ * Moving the end date of an EXPIRED assignment into the future reactivates it; moving an
+ * ACTIVE assignment's end date into the past leaves it to the next expiry-job run.
+ */
+export async function updateGoalAssignment(
+  db: DbClient,
+  ctx: ParentContext,
+  input: UpdateGoalAssignmentInput,
+) {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canManageTasks");
+  const existing = await db.goalAssignment.findFirst({
+    where: { id: input.assignmentId, familyId: ctx.familyId },
+    include: { goal: true },
+  });
+  if (!existing) throw AppError.notFound("Goal assignment");
+  if (existing.status === "COMPLETED") {
+    throw AppError.invalidState("A completed goal cannot be edited");
+  }
+  const datesChanging = input.startDate !== undefined || input.endDate !== undefined;
+  if (datesChanging && existing.periodKey !== "") {
+    throw AppError.invalidState("Weekly goals follow the calendar week; their dates cannot change");
+  }
+
+  const startDate = input.startDate ?? dbToLocalDate(existing.startDate);
+  const endDate =
+    input.endDate !== undefined
+      ? input.endDate
+      : existing.endDate
+        ? dbToLocalDate(existing.endDate)
+        : null;
+  if (endDate && endDate < startDate) {
+    throw AppError.validation("The end date cannot be before the start date");
+  }
+
+  await db.goalAssignment.update({
+    where: { id: existing.id },
+    data: {
+      ...(datesChanging
+        ? {
+            startDate: localDateToDb(startDate),
+            endDate: endDate ? localDateToDb(endDate) : null,
+          }
+        : {}),
+      targetOverride: input.targetCount === undefined ? undefined : input.targetCount,
+      ...(existing.status === "EXPIRED" && (!endDate || endDate >= input.today)
+        ? { status: "ACTIVE" as const }
+        : {}),
+    },
+  });
+  await recordAudit(db, {
+    familyId: ctx.familyId,
+    actorType: "PARENT",
+    actorUserId: ctx.userId,
+    action: "goal.assignment.update",
+    entityType: "GoalAssignment",
+    entityId: existing.id,
+    metadata: {
+      goal: existing.goal.title,
+      startDate,
+      endDate,
+      targetCount: input.targetCount ?? null,
+    },
+  });
+  return repairGoalAssignment(db, ctx.familyId, existing.id);
+}
+
+export interface RepairResult {
+  assignmentId: string;
+  changed: boolean;
+  completedNow: boolean;
+  before: { progressCount: number; currentStreak: number; bestStreak: number };
+  after: { progressCount: number; currentStreak: number; bestStreak: number };
+}
+
+/**
+ * Recompute an assignment's cached counters from its `goal_contribution` rows (the source of
+ * truth) and fix anything that drifted. Idempotent: a second run changes nothing. If the replay
+ * shows an ACTIVE assignment has reached its target (for example after the target was lowered)
+ * it is completed and the reward is paid once.
+ */
+export async function repairGoalAssignment(
+  db: DbClient,
+  familyId: string,
+  assignmentId: string,
+): Promise<RepairResult> {
+  const probe = await db.goalAssignment.findFirst({
+    where: { id: assignmentId, familyId },
+    select: { childId: true },
+  });
+  if (!probe) throw AppError.notFound("Goal assignment");
+
+  const run = async (tx: Prisma.TransactionClient): Promise<RepairResult> => {
+    await lockChildRow(tx, probe.childId);
+    const assignment = await tx.goalAssignment.findFirstOrThrow({
+      where: { id: assignmentId, familyId },
+      include: { goal: true },
+    });
+    const contributions = await tx.goalContribution.findMany({
+      where: { goalAssignmentId: assignment.id },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { localDate: true, countedForStreak: true },
+    });
+    const target = effectiveTarget(assignment.goal.targetCount, assignment.targetOverride);
+    const replay = recomputeProgress(
+      assignment.goal.type,
+      target,
+      contributions.map((c) => ({
+        localDate: dbToLocalDate(c.localDate),
+        countedForStreak: c.countedForStreak,
+      })),
+    );
+
+    const before = {
+      progressCount: assignment.progressCount,
+      currentStreak: assignment.currentStreak,
+      bestStreak: assignment.bestStreak,
+    };
+    const after = {
+      progressCount: replay.progressCount,
+      currentStreak: replay.currentStreak,
+      bestStreak: replay.bestStreak,
+    };
+    const lastDate = replay.lastContributionDate
+      ? localDateToDb(replay.lastContributionDate)
+      : null;
+    const lastChanged =
+      (assignment.lastContributionDate?.getTime() ?? null) !== (lastDate?.getTime() ?? null);
+    const countersChanged =
+      before.progressCount !== after.progressCount ||
+      before.currentStreak !== after.currentStreak ||
+      before.bestStreak !== after.bestStreak ||
+      lastChanged;
+    const completeNow = assignment.status === "ACTIVE" && replay.completed;
+
+    if (countersChanged || completeNow) {
+      await tx.goalAssignment.update({
+        where: { id: assignment.id },
+        data: {
+          ...after,
+          lastContributionDate: lastDate,
+          ...(completeNow ? { status: "COMPLETED" as const, completedAt: new Date() } : {}),
+        },
+      });
+    }
+    if (completeNow) await awardGoalCompletion(tx, assignment, assignment.goal);
+    return {
+      assignmentId: assignment.id,
+      changed: countersChanged || completeNow,
+      completedNow: completeNow,
+      before,
+      after,
+    };
+  };
+
+  // Callers inside a transaction pass the transaction client; otherwise open one.
+  return "$transaction" in db ? db.$transaction(run) : run(db);
+}
+
+/** Repair every assignment of a goal (parent action). Audited when anything changed. */
+export async function repairGoalProgress(
+  db: DbClient,
+  ctx: ParentContext,
+  input: { familyId: string; goalId: string },
+) {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canManageTasks");
+  const goal = await db.goal.findFirst({ where: { id: input.goalId, familyId: ctx.familyId } });
+  if (!goal) throw AppError.notFound("Goal");
+  const assignments = await db.goalAssignment.findMany({
+    where: { goalId: goal.id, familyId: ctx.familyId },
+    select: { id: true },
+  });
+  const results: RepairResult[] = [];
+  for (const a of assignments) results.push(await repairGoalAssignment(db, ctx.familyId, a.id));
+  const changed = results.filter((r) => r.changed).length;
+  if (changed > 0) {
+    await recordAudit(db, {
+      familyId: ctx.familyId,
+      actorType: "PARENT",
+      actorUserId: ctx.userId,
+      action: "goal.repair",
+      entityType: "Goal",
+      entityId: goal.id,
+      metadata: { title: goal.title, assignmentsRepaired: changed },
+    });
+  }
+  return results;
 }

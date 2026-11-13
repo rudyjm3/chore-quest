@@ -7,6 +7,7 @@ import type { ChildContext, ParentContext } from "@/server/policies/context";
 import { assertFamilyScope, assertPermission } from "@/server/policies/family-access";
 
 import { recordAudit } from "./audit.service";
+import { notifyChild, notifyParents } from "./notification.service";
 import { completeRoutineStep } from "./routine.service";
 import { processCompletion, type ProcessResult } from "./progression.service";
 
@@ -91,6 +92,14 @@ export async function submitOccurrence(
       });
       return { submission, policy, approved };
     }
+    await notifyParents(tx, ctx.familyId, {
+      kind: "SUBMISSION_PENDING",
+      title: `${ctx.childName} finished “${occurrence.assignment.task.title}”`,
+      body: note ? `“${note}”` : undefined,
+      entityType: "TaskOccurrence",
+      entityId: occurrenceId,
+      dedupeKey: `submission:${submission.id}:${submission.attempt}`,
+    });
     return { submission, policy, approved: null };
   });
 
@@ -162,6 +171,14 @@ export async function reviewOccurrence(
         entityId: occurrence.id,
         metadata: { note: input.note },
       });
+      await notifyChild(tx, ctx.familyId, occurrence.childId, {
+        kind: "SUBMISSION_REJECTED",
+        title: `Try “${occurrence.assignment.task.title}” again`,
+        body: input.note,
+        entityType: "TaskOccurrence",
+        entityId: occurrence.id,
+        dedupeKey: `review:${occurrence.id}:rejected:${submission?.attempt ?? 0}`,
+      });
       return { occurrenceId: occurrence.id, decision: "REJECTED" as const, alreadyApproved: false };
     }
 
@@ -171,6 +188,16 @@ export async function reviewOccurrence(
       isAutomatic: false,
       note: input.note,
     });
+    if (!approved.alreadyApproved) {
+      await notifyChild(tx, ctx.familyId, occurrence.childId, {
+        kind: "SUBMISSION_APPROVED",
+        title: `“${occurrence.assignment.task.title}” was approved`,
+        body: input.note,
+        entityType: "TaskOccurrence",
+        entityId: occurrence.id,
+        dedupeKey: `review:${occurrence.id}:approved`,
+      });
+    }
     return {
       occurrenceId: occurrence.id,
       decision: "APPROVED" as const,
@@ -272,6 +299,69 @@ async function approveOccurrenceTx(
 }
 
 // ---------------------------------------------------------------------------
+// Bulk approval
+// ---------------------------------------------------------------------------
+
+export interface BulkApprovalItem {
+  kind: "occurrence" | "routine_run";
+  id: string;
+}
+
+export type BulkApprovalResult =
+  | (BulkApprovalItem & { ok: true; alreadyApproved: boolean })
+  | (BulkApprovalItem & { ok: false; code: string; message: string });
+
+/**
+ * Approve many items at once. Every item runs through the same single-item path
+ * (`reviewOccurrence` / `reviewRoutineRun`), so each gets its own transaction, its
+ * own audit entry and its own pipeline run. One failing item never rolls back the
+ * others; the caller gets a per-item result. Re-sending the same batch is safe:
+ * items that are already approved report `alreadyApproved`.
+ */
+export async function bulkApprove(
+  db: DbClient,
+  ctx: ParentContext,
+  input: { familyId: string; items: BulkApprovalItem[]; note?: string },
+): Promise<BulkApprovalResult[]> {
+  assertFamilyScope(ctx, input.familyId);
+  assertPermission(ctx, "canApprove");
+  if (input.items.length === 0) throw AppError.validation("Select at least one item");
+  if (input.items.length > 50) throw AppError.validation("Approve at most 50 items at a time");
+
+  const seen = new Set<string>();
+  const results: BulkApprovalResult[] = [];
+  for (const item of input.items) {
+    const key = `${item.kind}:${item.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      const outcome =
+        item.kind === "occurrence"
+          ? await reviewOccurrence(db, ctx, {
+              familyId: input.familyId,
+              occurrenceId: item.id,
+              decision: "APPROVED",
+              note: input.note,
+            })
+          : await reviewRoutineRun(db, ctx, {
+              familyId: input.familyId,
+              runId: item.id,
+              decision: "APPROVED",
+              note: input.note,
+            });
+      results.push({ ...item, ok: true, alreadyApproved: outcome.alreadyApproved });
+    } catch (error) {
+      if (error instanceof AppError) {
+        results.push({ ...item, ok: false, code: error.code, message: error.message });
+      } else {
+        throw error;
+      }
+    }
+  }
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // Routine runs
 // ---------------------------------------------------------------------------
 
@@ -286,7 +376,13 @@ export async function reviewRoutineRun(
     await lockRoutineRun(tx, input.runId);
     const run = await tx.routineRun.findFirst({
       where: { id: input.runId, familyId: ctx.familyId },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        childId: true,
+        submittedAt: true,
+        assignment: { select: { routine: { select: { name: true } } } },
+      },
     });
     if (!run) throw AppError.notFound("Routine run");
     if (input.decision === "REJECTED") {
@@ -298,7 +394,20 @@ export async function reviewRoutineRun(
       });
       await tx.routineRun.update({
         where: { id: run.id },
-        data: { status: "REJECTED", reviewedAt: new Date(), submittedAt: null },
+        data: {
+          status: "REJECTED",
+          reviewedAt: new Date(),
+          submittedAt: null,
+          reviewNote: input.note ?? null,
+        },
+      });
+      await notifyChild(tx, ctx.familyId, run.childId, {
+        kind: "SUBMISSION_REJECTED",
+        title: `Try “${run.assignment.routine.name}” again`,
+        body: input.note,
+        entityType: "RoutineRun",
+        entityId: run.id,
+        dedupeKey: `review:${run.id}:rejected:${run.submittedAt?.toISOString() ?? "none"}`,
       });
       await recordAudit(tx, {
         familyId: ctx.familyId,
@@ -315,7 +424,18 @@ export async function reviewRoutineRun(
       runId: run.id,
       reviewerUserId: ctx.userId,
       isAutomatic: false,
+      note: input.note,
     });
+    if (!approved.alreadyApproved) {
+      await notifyChild(tx, ctx.familyId, run.childId, {
+        kind: "SUBMISSION_APPROVED",
+        title: `“${run.assignment.routine.name}” was approved`,
+        body: input.note,
+        entityType: "RoutineRun",
+        entityId: run.id,
+        dedupeKey: `review:${run.id}:approved`,
+      });
+    }
     return { runId: run.id, decision: "APPROVED" as const, ...approved };
   });
   if (outcome.decision === "APPROVED" && outcome.completionId) {
@@ -354,7 +474,7 @@ export async function completeRoutineStepAndSubmit(
  */
 async function approveRoutineRunTx(
   tx: Tx,
-  params: { runId: string; reviewerUserId: string | null; isAutomatic: boolean },
+  params: { runId: string; reviewerUserId: string | null; isAutomatic: boolean; note?: string },
 ) {
   const run = await tx.routineRun.findUniqueOrThrow({
     where: { id: params.runId },
@@ -366,7 +486,7 @@ async function approveRoutineRunTx(
   const now = new Date();
   await tx.routineRun.update({
     where: { id: run.id },
-    data: { status: "APPROVED", reviewedAt: now },
+    data: { status: "APPROVED", reviewedAt: now, reviewNote: params.note ?? null },
   });
   const completion = await tx.activityCompletion.create({
     data: {

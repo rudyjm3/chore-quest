@@ -105,3 +105,49 @@ export function applyContribution(
 export function goalPeriodKey(type: GoalType, weekKey: string): string {
   return type === "WEEKLY_COUNT" ? weekKey : "";
 }
+
+/** One persisted contribution, in the order the pipeline processed it. */
+export interface ContributionFact {
+  localDate: LocalDate;
+  countedForStreak: boolean;
+}
+
+/** The target that applies to an assignment: its own override, else the goal's. */
+export function effectiveTarget(goalTarget: number, targetOverride: number | null): number {
+  return targetOverride ?? goalTarget;
+}
+
+/**
+ * Rebuild an assignment's cached counters from its contribution rows (the source of truth).
+ *
+ * `contributions` must be in processing order (createdAt, id). Counting goals count every
+ * row. Consecutive-day goals replay only the rows that advanced the streak: same-day repeats
+ * and out-of-order approvals were stored with `countedForStreak = false` and never changed
+ * the counters, so skipping them reproduces exactly what the live pipeline computed.
+ */
+export function recomputeProgress(
+  type: GoalType,
+  targetCount: number,
+  contributions: ContributionFact[],
+): ProgressState & { completed: boolean } {
+  let state: ProgressState = {
+    progressCount: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    lastContributionDate: null,
+  };
+  let completed = false;
+  for (const c of contributions) {
+    if (type === "CONSECUTIVE_DAYS" && !c.countedForStreak) continue;
+    const next = applyContribution(type, targetCount, state, c.localDate);
+    if (!next.counted) continue;
+    state = {
+      progressCount: next.progressCount,
+      currentStreak: next.currentStreak,
+      bestStreak: next.bestStreak,
+      lastContributionDate: next.lastContributionDate,
+    };
+    completed = completed || next.completed;
+  }
+  return { ...state, completed };
+}
