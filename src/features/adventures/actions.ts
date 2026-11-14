@@ -8,9 +8,11 @@ import { prisma } from "@/lib/db/prisma";
 import { runAction, type ActionResult } from "@/lib/errors";
 import {
   claimChapterRewardSchema,
+  equipCosmeticSchema,
   purchaseItemSchema,
   startAdventureSchema,
   submitPuzzleSchema,
+  visitLocationSchema,
 } from "@/lib/validation/adventures";
 import { childSignInSchema, familyCodeLookupSchema } from "@/lib/validation/families";
 import { formToObject, parseOrThrow } from "@/lib/validation/form";
@@ -25,6 +27,8 @@ import {
   revokeChildSession,
   signInChild,
 } from "@/server/services/child.service";
+import { equipCosmetic } from "@/server/services/crew-camp.service";
+import { visitLocation } from "@/server/services/location.service";
 import { purchaseItem } from "@/server/services/inventory.service";
 
 // --- Child sign-in -----------------------------------------------------------
@@ -119,5 +123,29 @@ export async function purchaseItemAction(_prev: ActionResult<unknown> | null, fo
     });
     revalidatePath("/child", "layout");
     return { itemKey: result.item.key, replayed: result.replayed };
+  });
+}
+
+export async function equipCosmeticAction(_prev: ActionResult<unknown> | null, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireChildContext();
+    const input = parseOrThrow(equipCosmeticSchema, formToObject(formData));
+    const result = await equipCosmetic(prisma, ctx, {
+      adventureKey: "pirate",
+      slot: input.slot,
+      itemKey: input.itemKey === "" ? null : input.itemKey,
+    });
+    revalidatePath("/child/port", "layout");
+    return { equipped: result.equipped };
+  });
+}
+
+export async function visitLocationAction(_prev: ActionResult<unknown> | null, formData: FormData) {
+  return runAction(async () => {
+    const ctx = await requireChildContext();
+    const input = parseOrThrow(visitLocationSchema, formToObject(formData));
+    const result = await visitLocation(prisma, ctx, { adventureKey: "pirate", ...input });
+    revalidatePath("/child", "layout");
+    return { granted: result.granted };
   });
 }

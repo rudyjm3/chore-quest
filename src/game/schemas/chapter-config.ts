@@ -52,6 +52,10 @@ export const chapterLocationSchema = z.object({
   puzzleKey: z.string().optional(),
   npcKey: z.string().optional(),
   description: z.string().optional(),
+  /** The child must currently hold at least one of this item to use the location (ADR 0014). */
+  requiresItemKey: z.string().optional(),
+  /** One-time item reward granted on the first visit, through grantItem (ADR 0014). */
+  reward: itemRewardSchema.optional(),
 });
 export type ChapterLocation = z.infer<typeof chapterLocationSchema>;
 
@@ -64,6 +68,8 @@ export const chapterConfigSchema = z.object({
   locations: z.array(chapterLocationSchema).default([]),
   /** Scene asset key used by the renderer (resolved via the asset manifest). */
   sceneAssetKey: z.string().optional(),
+  /** Spoiler-free nudge about what to do next here; shown by the lighthouse. Static theme text. */
+  hint: z.string().min(1).max(200).optional(),
 });
 export type ChapterConfig = z.infer<typeof chapterConfigSchema>;
 

@@ -62,6 +62,13 @@ gallery (`achievement.service`) shows the hint while an achievement is locked an
 never sent to the client. Without a `hint` the generic "Keep going…" text is used. Services, schema and shared components stay theme-neutral;
 the pirate wording lives in `src/game/themes/pirate/achievements.ts`.
 
+## Home Port keys (chapter data)
+
+- `chapterConfig.hint` — spoiler-free nudge shown by the lighthouse (`lighthouseHint`: hint of the furthest playable chapter, else the next locked one).
+- `chapterConfig.locations[].requiresItemKey` and `.reward` — a place the child must hold an item for, with a one-time item reward on first visit (`location.service`, ADR 0014). Item rewards only; the key is per child and place.
+- Item `config.slot` — the slot a wearable item fits (`head`, `sail`, `deck`, ...). The crew camp stores `{ equipped: { slot: itemKey } }` in `child_adventure_progress.state` (ADR 0013); slots are an open vocabulary defined by item data.
+- NPC dialogue (`npcDialogueSchema`, `src/game/schemas/dialogue.ts`): lines per situation (`greeting`, `quest-complete`, `low-supplies`) plus `lowSupplies: { itemKey, below }`. `selectLine` is pure and picks by situation and a day seed; no free text and no child data.
+
 ## Puzzles
 
 A puzzle `type` maps to a `PuzzleVerifier` in `src/game/puzzles/registry.ts`. The client submits an

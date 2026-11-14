@@ -105,6 +105,16 @@ export const pirateAssetManifest: AssetManifest = assetManifestSchema.parse({
       placeholder: true,
     },
     {
+      id: "item.cove-pearl",
+      path: "/assets/adventures/pirate/collectibles/cove-pearl.svg",
+      type: "collectible",
+      theme: "pirate",
+      width: 96,
+      height: 96,
+      alt: "Cove pearl",
+      placeholder: true,
+    },
+    {
       id: "item.gold-doubloon",
       path: "/assets/adventures/pirate/collectibles/gold-doubloon.svg",
       type: "collectible",

@@ -42,6 +42,7 @@ const definition: AdventureDefinitionInput = {
         completion: { requiresQuestKeys: ["prepare-the-ship"] },
         rewards: { coins: 50, xp: 100, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 14, y: 72 },
+        hint: "Collect supply crates by finishing your chores. Three crates and the ship is ready to sail!",
         sceneAssetKey: "scene.home-port",
         locations: [
           {
@@ -74,6 +75,8 @@ const definition: AdventureDefinitionInput = {
             kind: "landmark",
             position: { x: 10, y: 85 },
             description: "Something glints behind the rocks...",
+            requiresItemKey: "map-fragment",
+            reward: { itemKey: "cove-pearl", quantity: 1 },
           },
         ],
       },
@@ -142,6 +145,7 @@ const definition: AdventureDefinitionInput = {
         completion: { requiresQuestKeys: ["recover-the-compass"] },
         rewards: { coins: 75, xp: 150, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 34, y: 52 },
+        hint: "Pip loves shiny feathers. Keep helping out and they will turn up one by one.",
         sceneAssetKey: "scene.parrot-island",
         locations: [
           {
@@ -230,6 +234,7 @@ const definition: AdventureDefinitionInput = {
         completion: { requiresQuestKeys: [] },
         rewards: { coins: 100, xp: 200, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 52, y: 66 },
+        hint: "The cove is far away. A sturdier ship will get you there.",
         sceneAssetKey: "scene.shipwreck-cove",
         locations: [],
       },
@@ -248,6 +253,7 @@ const definition: AdventureDefinitionInput = {
         completion: { requiresQuestKeys: [] },
         rewards: { coins: 125, xp: 250, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 66, y: 40 },
+        hint: "Something spooky lies beyond the fog. Finish the cove first.",
         sceneAssetKey: "scene.skull-reef",
         locations: [],
       },
@@ -266,6 +272,7 @@ const definition: AdventureDefinitionInput = {
         completion: { requiresQuestKeys: [] },
         rewards: { coins: 150, xp: 300, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 80, y: 58 },
+        hint: "The jungle whispers to brave sailors who finish the reef.",
         sceneAssetKey: "scene.whispering-jungle",
         locations: [],
       },
@@ -289,6 +296,7 @@ const definition: AdventureDefinitionInput = {
         completion: { requiresQuestKeys: [] },
         rewards: { coins: 500, xp: 1000, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 90, y: 24 },
+        hint: "All the map pieces together point to the treasure. Keep collecting!",
         sceneAssetKey: "scene.treasure-island",
         locations: [],
       },

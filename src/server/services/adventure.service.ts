@@ -152,6 +152,7 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
         mapMarker: config.mapMarker,
         locations: config.locations,
         sceneAssetKey: config.sceneAssetKey ?? null,
+        hint: config.hint ?? null,
         missingRequirements:
           cp?.status === "LOCKED" ? missingRequirements(config.unlock.requires, snapshot) : [],
         quests: chapter.quests.map((quest) => {
@@ -162,6 +163,7 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
             kind: quest.kind,
             title: quest.title,
             description: quest.description,
+            rewards: questConfigSchema.parse(quest.config).rewards,
             status: qp?.status ?? "LOCKED",
             objectives: quest.objectives.map((objective) => {
               const op = qp?.objectives.find((o) => o.objectiveId === objective.id);

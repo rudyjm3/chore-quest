@@ -282,3 +282,34 @@ single-balance race test fail (checked by mutation).
 - The "fresh clone into a scratch directory following the README" step was not done in this session.
 
 Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+
+## Home Port slice (Phase 4)
+
+**Part 0 — verification**
+
+- Full e2e on current `main` before any change: **51 passed, 10 skipped** (mobile project, by design). Nothing failed, nothing needed fixing.
+- Fresh clone into a scratch directory with its own databases (`fresh_dev`, `fresh_test`), following the README: install, `cp .env.example .env`, migrate deploy, seed, seed:dev, lint, typecheck, schema validate, unit (84), integration (160), build and e2e (51 passed, 10 skipped) all passed. The only defect found was documentation: the README intro still described a "Phase 1 foundation"; it now describes the current app. The README setup steps themselves worked unchanged.
+
+**What changed**
+
+- ADR 0013 (equipped cosmetics in adventure state) and ADR 0014 (hidden cove reward), each committed before its implementation.
+- Home Port hub `/child/port` (Pip's line, links), reachable from the child "More" menu.
+- **Quest board** `/child/port/quest-board`: read-only; active quests of reached chapters (completed ones too, while optional quests stay open) with objectives, progress and a reward preview, all from `getAdventureState` (which now also returns quest rewards). No new tables.
+- **Crew camp** `/child/port/crew-camp`: `equipCosmetic` locks the child row, re-reads progress, checks ownership and `config.slot`, and writes `{ equipped }` into `child_adventure_progress.state` (Zod schema in `src/game/schemas/adventure-state.ts`). Never read for rewards; no animation state persisted.
+- **Lighthouse** `/child/port/lighthouse` and **Pip dialogue**: static theme-authored text (`chapterConfig.hint`, `src/game/themes/pirate/dialogue.ts`) chosen by pure functions in `src/game/engine`.
+- **Hidden cove** `/child/port/hidden-cove`: `visitLocation` grants a one-time `cove-pearl` through `grantItem` with a per-child, per-place `sourceKey`, gated on holding a `map-fragment`. Migration `20261113120000_inventory_source_location_reward` adds the enum value `LOCATION_REWARD` only.
+- Placeholder artwork for the new item goes through the asset manifest (`item.cove-pearl`).
+
+**Test counts** (`pnpm check`): unit **102** (was 84), integration **183** (was 160). E2E **54 passed, 11 skipped** on mobile by design (was 51 / 10; new spec `phase4-port.spec.ts`). `pnpm format:check` clean; no schema drift against the migrations.
+
+**Concurrency verification**: the crew-camp looped race and its lock-holding test fail with `lockChildRow` removed and pass with it. For the cove, the looped race (5 parallel visits × 8 rounds) fails without the lock (unique-constraint error on `sourceKey`); the lock-holding test passes either way because the child foreign-key check already blocks on the held row, so it is not claimed as proof.
+
+**Known limitations / left out**
+
+- The lighthouse is repeatable; the design note's "once per day" would need a small state key (not built).
+- Quest descriptions are always visible instead of on tap; the crew camp is a list, not a dressed-up ship scene.
+- E2E does not drive the cove's "available" path (Ava lacks a map fragment in the demo data); that path is covered by integration tests.
+- Parrot Island feather grove, richer compass-puzzle UI, Zustand scene state/animations/sound toggle and lazy-loaded chapter bundles are still open (Phase 4 remainder).
+- Out of scope by instruction and untouched: real email provider, photos on submissions (no uploads, storage or image field), `NOTIFICATION_RETENTION_DAYS` override.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).

@@ -17,12 +17,15 @@ export function QuestCard({
   kind,
   status,
   objectives,
+  reward,
 }: {
   title: string;
   description?: string | null;
   kind: "MAIN" | "SIDE";
   status: string;
   objectives: QuestCardObjective[];
+  /** Optional reward preview line, already formatted. */
+  reward?: string;
 }) {
   return (
     <Card
@@ -49,6 +52,11 @@ export function QuestCard({
             label={`${objective.completed ? "✅ " : ""}${objective.title}`}
           />
         ))}
+        {reward ? (
+          <p className="text-sm font-semibold" data-testid="quest-reward">
+            Reward: {reward}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

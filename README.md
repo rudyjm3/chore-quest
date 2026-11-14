@@ -4,10 +4,11 @@ Chore Quests is a gamified chore, routine and goal manager for families. Parents
 responsibilities; children complete them to earn points, achievements and progress through adventure
 worlds. The first theme is **Pirate Adventure — The Lost Treasure of Blackbeard Bay**.
 
-This repository contains the **Phase 1 foundation**: a runnable Next.js application with the full
-database schema, migrations, seed data, authentication, authorization, domain services, a parent and
-child UI shell, and an automated test suite. See [ROADMAP.md](ROADMAP.md) for what comes next and
-[docs/BUILD_HEALTH_REPORT.md](docs/BUILD_HEALTH_REPORT.md) for what was validated.
+This repository is a runnable Next.js application with the full database schema, migrations, seed data,
+authentication, authorization, domain services, parent and child UIs (tasks, routines, goals, rewards,
+approvals, the Pirate Adventure with its Home Port), and an automated test suite. See
+[ROADMAP.md](ROADMAP.md) for what is done and what comes next, [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) for
+unfinished items and [docs/BUILD_HEALTH_REPORT.md](docs/BUILD_HEALTH_REPORT.md) for what was validated.
 
 ## Technology stack
 
@@ -95,7 +96,7 @@ The defaults in `.env.example` match both options. Then apply migrations and see
 
 ```bash
 pnpm db:migrate:deploy   # apply committed migrations (no prompts)
-pnpm db:seed             # idempotent reference data: task presets, routine templates, pirate adventure
+pnpm db:seed             # idempotent reference data: task presets, routine templates, pirate adventure (re-run after pulling theme changes)
 pnpm db:seed:dev         # OPTIONAL demo family for local development / e2e (never in production)
 ```
 
