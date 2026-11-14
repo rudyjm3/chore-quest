@@ -59,10 +59,11 @@ Depends on: Phase 3 pipeline stability, production artwork.
 
 - 🟡 World map (functional with placeholder art) → production illustrations via manifest
 - ✅ Home Port scene (functional, placeholder art): supply shop (ADR 0012), quest board (read-only), crew camp (equip/unequip, ADR 0013), lighthouse hints, hidden cove (one-time reward, ADR 0014); hub at `/child/port`
-- 🟡 Parrot Island: Pip dialogue ✅ (static lines on the Home Port hub); feather grove, compass puzzle (sequence-match done; richer puzzle UI pending)
+- ✅ Parrot Island (functional, placeholder art): Pip dialogue (static lines on the Home Port hub), feather grove and compass shrine location pages (`/child/adventure/[chapterKey]/[locationKey]`, ADR 0015), richer sequence-match puzzle screen (undo/clear, vague server feedback, `aria-live`)
 - 🟡 Interactive quests + side missions (engine done; dialog/animation layer pending)
 - 🟡 Collectibles & inventory screen ✅ (read-only treasure chest); ship upgrades/cosmetics shop ✅ (supply shop); equipping cosmetics ✅ (crew camp)
-- ⬜ Zustand-backed scene state, CSS/SVG animations, sound toggle
+- ✅ Zustand-backed scene state, CSS/SVG feedback animation (reduced-motion aware) and an opt-in sound toggle, all client-only (ADR 0016)
+- 🟡 Home Port polish: lighthouse once per day ✅ (ADR 0017); quest detail on tap and a visual crew-camp scene ⬜
 - ⬜ Lazy-loaded chapter bundles and image optimization pass
 
 ## Phase 5 — Complete Pirate Campaign ⬜

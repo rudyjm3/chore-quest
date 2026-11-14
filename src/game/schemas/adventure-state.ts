@@ -15,6 +15,11 @@ const itemKeySchema = z.string().min(1).max(64);
 
 export const adventureStateSchema = z.looseObject({
   equipped: z.record(slotKeySchema, itemKeySchema).default({}),
+  /** Household-local day of the child's last lighthouse look (ADR 0017). A bad value is dropped alone. */
+  lighthouse: z
+    .object({ lastLookDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
+    .optional()
+    .catch(undefined),
 });
 export type AdventureState = z.infer<typeof adventureStateSchema>;
 

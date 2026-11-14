@@ -167,6 +167,13 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
             status: qp?.status ?? "LOCKED",
             objectives: quest.objectives.map((objective) => {
               const op = qp?.objectives.find((o) => o.objectiveId === objective.id);
+              const objectiveConfig = parseObjectiveConfig(objective.config);
+              const prereq = objectiveConfig.requiresObjectiveKey
+                ? quest.objectives.find((o) => o.key === objectiveConfig.requiresObjectiveKey)
+                : undefined;
+              const prereqDone = prereq
+                ? Boolean(qp?.objectives.find((o) => o.objectiveId === prereq.id)?.completedAt)
+                : true;
               return {
                 id: objective.id,
                 key: objective.key,
@@ -175,6 +182,9 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
                 currentCount: op?.currentCount ?? 0,
                 targetCount: objective.targetCount,
                 completed: Boolean(op?.completedAt),
+                /** Display hints only (ADR 0015); the server re-checks the gate when a puzzle is submitted. */
+                puzzleKey: objectiveConfig.puzzleKey ?? null,
+                available: prereqDone,
               };
             }),
           };
@@ -499,6 +509,44 @@ export async function claimChapterReward(db: DbClient, ctx: ChildContext, chapte
 }
 
 /** Child submits a puzzle answer. Verified server-side; completion recorded at most once. */
+/**
+ * A puzzle as the browser may see it (ADR 0015): `view` comes from the verifier's `toClientView`, so it
+ * never contains the answer. Scoped to the child: refuses chapters the child has not unlocked.
+ */
+export async function getPuzzleForChild(
+  db: DbClient,
+  ctx: ChildContext,
+  params: { adventureKey: string; chapterKey: string; puzzleKey: string },
+) {
+  const puzzle = await db.puzzleDefinition.findFirst({
+    where: {
+      key: params.puzzleKey,
+      chapter: { key: params.chapterKey, adventure: { key: params.adventureKey } },
+    },
+  });
+  if (!puzzle) throw AppError.notFound("Puzzle");
+  const [cp, solved] = await Promise.all([
+    db.childChapterProgress.findUnique({
+      where: { childId_chapterId: { childId: ctx.childId, chapterId: puzzle.chapterId } },
+    }),
+    db.puzzleAttempt.findFirst({
+      where: { childId: ctx.childId, puzzleId: puzzle.id, status: "COMPLETED" },
+      select: { id: true },
+    }),
+  ]);
+  if (!cp || cp.status === "LOCKED") throw AppError.forbidden("This puzzle is not available yet");
+  const config = puzzleConfigSchema.parse(puzzle.config);
+  const verifier = getPuzzleVerifier(puzzle.type);
+  return {
+    id: puzzle.id,
+    key: puzzle.key,
+    title: puzzle.title,
+    type: puzzle.type,
+    solved: Boolean(solved),
+    view: verifier.toClientView(verifier.parseConfig(config.data)),
+  };
+}
+
 export async function submitPuzzleAnswer(
   db: DbClient,
   ctx: ChildContext,

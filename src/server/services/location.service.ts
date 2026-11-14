@@ -1,7 +1,8 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { chapterConfigSchema, type ChapterLocation } from "@/game/schemas";
+import { chapterConfigSchema, parseAdventureState, type ChapterLocation } from "@/game/schemas";
 import { lockChildRow, type DbClient } from "@/lib/db/prisma";
 import { AppError } from "@/lib/errors";
+import { todayIn } from "@/lib/utils/dates";
 import { sourceKeys } from "@/lib/utils/source-keys";
 import type { ChildContext } from "@/server/policies/context";
 
@@ -128,5 +129,62 @@ export async function visitLocation(
       ),
     });
     return { granted: result.created, itemKey: reward.itemKey };
+  });
+}
+
+// --- Lighthouse: one look per household-local day (ADR 0017) -------------------------------------
+
+/** Whether this child has already looked out from the lighthouse today. Own data only. */
+export async function getLighthouseStatus(
+  db: DbClient,
+  ctx: ChildContext,
+  params: { adventureKey: string; now?: Date },
+) {
+  const adventure = await db.adventure.findUnique({ where: { key: params.adventureKey } });
+  if (!adventure || !adventure.isActive) throw AppError.notFound("Adventure");
+  const [progress, family] = await Promise.all([
+    db.childAdventureProgress.findFirst({
+      where: { childId: ctx.childId, familyId: ctx.familyId, adventureId: adventure.id },
+      select: { state: true },
+    }),
+    db.family.findUnique({ where: { id: ctx.familyId }, select: { timezone: true } }),
+  ]);
+  if (!progress) return { started: false as const, lookedToday: false };
+  const today = todayIn(family?.timezone ?? "UTC", params.now);
+  return {
+    started: true as const,
+    lookedToday: parseAdventureState(progress.state).lighthouse?.lastLookDate === today,
+  };
+}
+
+/**
+ * Look out to sea. Lock child, re-read the state under the lock, write today's date only if it is
+ * not already there, and keep every other state key (equipped cosmetics, unknown flags).
+ */
+export async function lookOutFromLighthouse(
+  db: DbClient,
+  ctx: ChildContext,
+  params: { adventureKey: string; now?: Date },
+) {
+  return db.$transaction(async (tx) => {
+    await lockChildRow(tx, ctx.childId);
+    const adventure = await tx.adventure.findUnique({ where: { key: params.adventureKey } });
+    if (!adventure || !adventure.isActive) throw AppError.notFound("Adventure");
+    const progress = await tx.childAdventureProgress.findFirst({
+      where: { childId: ctx.childId, familyId: ctx.familyId, adventureId: adventure.id },
+    });
+    if (!progress) throw AppError.invalidState("Start your adventure first");
+    const family = await tx.family.findUnique({
+      where: { id: ctx.familyId },
+      select: { timezone: true },
+    });
+    const today = todayIn(family?.timezone ?? "UTC", params.now);
+    const state = parseAdventureState(progress.state);
+    if (state.lighthouse?.lastLookDate === today) return { newlyLooked: false, lookedOn: today };
+    await tx.childAdventureProgress.update({
+      where: { id: progress.id },
+      data: { state: { ...state, lighthouse: { lastLookDate: today } } },
+    });
+    return { newlyLooked: true, lookedOn: today };
   });
 }

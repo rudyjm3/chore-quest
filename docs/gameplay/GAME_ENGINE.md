@@ -71,6 +71,10 @@ the pirate wording lives in `src/game/themes/pirate/achievements.ts`.
 
 ## Puzzles
 
+Every `PuzzleVerifier` also implements `toClientView(config)`: the only part of the stored config that may reach the browser (for
+`sequence-match`, `symbols` and `hint`, never `sequence`). Pages use `getPuzzleForChild`, never the raw `puzzle_definition.config` (ADR 0015).
+Verifier feedback is theme-neutral and never says how close an attempt was.
+
 A puzzle `type` maps to a `PuzzleVerifier` in `src/game/puzzles/registry.ts`. The client submits an
 answer; the server parses the stored config and verifies. Completed attempts are unique per child/puzzle
 (partial index). Current type: `sequence-match` (`{ symbols, sequence, hint }`).
@@ -82,7 +86,7 @@ answer; the server parses the stored config and verifies. Completed attempts are
 - Chapter scenes render manifest artwork plus `locations` hotspots (`quest-board`, `shop`, `npc`, `puzzle`, …).
 - Asset manifests (`src/game/schemas/asset-manifest.ts`) describe id, path, type, theme, chapter, size,
   optional position/animation and a `placeholder` flag. Components never hard-code paths.
-- Animation/UI state stays in component state (Zustand later); persistent state is only what the
+- Animation/UI state stays in the client-only Zustand scene store (`src/features/adventures/scene-store.ts`, ADR 0016) and never reaches the database; persistent state is only what the
   services write.
 
 ## Adding a theme

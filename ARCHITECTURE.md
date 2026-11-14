@@ -140,10 +140,12 @@ Date rules: [docs/database/TIMEZONES.md](docs/database/TIMEZONES.md).
 ### Home Port slice
 
 - `crew-camp.service`: `getCrewCamp` (own wearable items by slot, ownership re-checked on read) and `equipCosmetic` (lock child → re-read progress → check ownership and `config.slot` → write `{ equipped }` into `child_adventure_progress.state`; ADR 0013). State schema: `src/game/schemas/adventure-state.ts`; pure helpers: `src/features/adventures/crew-camp.ts`.
+- `adventure.service` (ext.): `getPuzzleForChild` returns a puzzle with only the verifier's `toClientView` (ADR 0015); `getAdventureState` objectives also return `puzzleKey` and `available` (display hints).
+- `location.service` (ext.): `getLighthouseStatus` / `lookOutFromLighthouse` (lock child → re-read state → write `lighthouse.lastLookDate` for the household-local day; ADR 0017).
 - `location.service`: `getLocationStatus` / `visitLocation` — one-time item reward at a configured place, `requiresItemKey` gate, `grantItem` with `sourceKeys.locationItem` and source type `LOCATION_REWARD` (ADR 0014).
 - `adventure.service.getAdventureState` now also returns each quest's `rewards` and each chapter's `hint`. The quest board (`src/features/adventures/quest-board.ts`, pure) only filters that state; it has no tables or writes.
 - Pure engine modules: `src/game/engine/dialogue.ts` (situation and line selection over engine state, rotating by household-local date) and `lighthouse.ts` (hint of the current chapter). Authored text lives in `src/game/themes/pirate/dialogue.ts` and chapter `config.hint`.
-- Child routes: `/child/port` (hub with Pip), `/child/port/quest-board`, `/child/port/crew-camp`, `/child/port/lighthouse`, `/child/port/hidden-cove`; reachable from the "More" menu.
+- Child routes: `/child/port` (hub with Pip), `/child/port/quest-board`, `/child/port/crew-camp`, `/child/port/lighthouse`, `/child/port/hidden-cove`; reachable from the "More" menu. Chapter scene locations open `/child/adventure/[chapterKey]/[locationKey]` (feather grove, compass shrine; pure selection in `src/features/adventures/location-view.ts`). Client-only scene state (Zustand store, feedback dial, sound toggle) lives in `src/features/adventures/` and is never persisted (ADR 0016).
 
 ## Service relationships and the approval pipeline
 
