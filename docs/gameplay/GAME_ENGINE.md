@@ -75,7 +75,6 @@ Every `PuzzleVerifier` also implements `toClientView(config)`: the only part of 
 `sequence-match`, `symbols` and `hint`, never `sequence`). Pages use `getPuzzleForChild`, never the raw `puzzle_definition.config` (ADR 0015).
 Verifier feedback is theme-neutral and never says how close an attempt was.
 
-
 A puzzle `type` maps to a `PuzzleVerifier` in `src/game/puzzles/registry.ts`. The client submits an
 answer; the server parses the stored config and verifies. Completed attempts are unique per child/puzzle
 (partial index). Current type: `sequence-match` (`{ symbols, sequence, hint }`).

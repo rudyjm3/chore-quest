@@ -313,3 +313,30 @@ Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
 - Out of scope by instruction and untouched: real email provider, photos on submissions (no uploads, storage or image field), `NOTIFICATION_RETENTION_DAYS` override.
 
 Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+
+## Parrot Island slice (Phase 4)
+
+**What changed**
+
+- ADRs 0015 (location pages, client-safe puzzle view), 0016 (client-only scene state, sound) and 0017 (lighthouse once per day), each committed before its implementation.
+- **Feather grove and compass shrine** at `/child/adventure/[chapterKey]/[locationKey]`; scene labels that have a page are now links (≥44px). The grove shows this child's feather slots plus the quest card; the shrine says what to finish first, then shows the puzzle. No new tables.
+- **Puzzle screen**: undo, clear, numbered picks, `aria-live` messages, vague server verdict (never which symbols were right), picks kept after a wrong attempt. `PuzzleVerifier.toClientView` and `getPuzzleForChild` mean only `symbols` and `hint` reach the browser; verifier feedback is now theme-neutral.
+- **Scene state**: in-memory Zustand store, CSS/SVG feedback dial (spin/wobble), reduced-motion aware, sound toggle off by default with a synthesised chime (no audio files); only the sound preference is stored, in `localStorage` inside try/catch.
+- **Lighthouse once per day**: `lighthouse.lastLookDate` in the adventure state (household-local day), written by `lookOutFromLighthouse` under the child lock; the hint shows after the day's look.
+- `getAdventureState` objectives gained `puzzleKey` and `available` (display hints only; the server re-checks the gate).
+
+**Test counts** (`pnpm check`): unit **116** (was 102), integration **195** (was 183). E2E **57 passed, 12 skipped** (mobile, by design; was 54 / 11) with new `phase4-parrot.spec.ts`. `pnpm format:check` clean; no schema drift (no migration in this slice).
+
+**Concurrency verification**: the lighthouse looped race (5 parallel looks × 8) and the look-versus-equip race (15 rounds) both fail with `lockChildRow` removed from `lookOutFromLighthouse` and pass with it.
+
+**Issues met**: a stale `next start` left on port 3100 by earlier runs hung and made a whole e2e run time out; killing it and starting a fresh server fixed it (not a code defect). A bobbing scene link made Playwright's click wait forever (unstable target); the bob moved to a decorative inner span so the touch target stays still.
+
+**Known limitations / left out**
+
+- Quest detail on tap and a visual crew-camp scene (scope item 4) were not built.
+- Lazy-loaded chapter bundles and image optimization (item 5) were not started; no before/after numbers.
+- Failed puzzle attempts are unlimited (one row each); not a boundary for a game reward (ADR 0015).
+- The sound preference is per device; the chime is synthesised, real audio would need an additive manifest type.
+- Out of scope and untouched: real email provider, photos on submissions, `NOTIFICATION_RETENTION_DAYS`.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
