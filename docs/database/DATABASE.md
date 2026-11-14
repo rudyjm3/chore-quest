@@ -158,7 +158,7 @@ erDiagram
   CHECK `0 <= currentCount <= targetCount`; `quest_contribution` unique `(objectiveProgressId, completionId)`.
 - `puzzle_attempt`: partial unique index `puzzle_attempt_completed_uq` on `(childId, puzzleId) WHERE status = 'COMPLETED'`.
 - `child_inventory_item` unique `(childId, itemId)`, CHECK `quantity >= 0`; `inventory_grant` unique `sourceKey`, CHECK `quantity <> 0`.
-- `child_adventure_progress.state` (JSON) holds `{ equipped: { <slot>: <itemKey> } }` validated by `adventureStateSchema` (ADR 0013); never authoritative for rewards. One-time location rewards are `inventory_grant` rows with `sourceType = LOCATION_REWARD` and `sourceKey = location:<adventureProgressId>:<chapterKey>:<locationKey>:item:<itemKey>` (ADR 0014); "already found" is derived from that row.
+- `child_adventure_progress.state` (JSON) holds `{ equipped: { <slot>: <itemKey> }, lighthouse?: { lastLookDate: "YYYY-MM-DD" } }` validated by `adventureStateSchema` (ADR 0013, ADR 0017; a malformed `lighthouse` is dropped on its own); animation and sound state are never stored here (ADR 0016); never authoritative for rewards. One-time location rewards are `inventory_grant` rows with `sourceType = LOCATION_REWARD` and `sourceKey = location:<adventureProgressId>:<chapterKey>:<locationKey>:item:<itemKey>` (ADR 0014); "already found" is derived from that row.
 
 ## Transactions and locking
 

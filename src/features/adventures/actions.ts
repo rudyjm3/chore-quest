@@ -28,7 +28,7 @@ import {
   signInChild,
 } from "@/server/services/child.service";
 import { equipCosmetic } from "@/server/services/crew-camp.service";
-import { visitLocation } from "@/server/services/location.service";
+import { lookOutFromLighthouse, visitLocation } from "@/server/services/location.service";
 import { purchaseItem } from "@/server/services/inventory.service";
 
 // --- Child sign-in -----------------------------------------------------------
@@ -147,5 +147,14 @@ export async function visitLocationAction(_prev: ActionResult<unknown> | null, f
     const result = await visitLocation(prisma, ctx, { adventureKey: "pirate", ...input });
     revalidatePath("/child", "layout");
     return { granted: result.granted };
+  });
+}
+
+export async function lookOutAction() {
+  return runAction(async () => {
+    const ctx = await requireChildContext();
+    const result = await lookOutFromLighthouse(prisma, ctx, { adventureKey: "pirate" });
+    revalidatePath("/child/port", "layout");
+    return { newlyLooked: result.newlyLooked };
   });
 }

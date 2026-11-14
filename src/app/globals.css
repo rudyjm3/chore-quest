@@ -222,3 +222,71 @@
     animation: none;
   }
 }
+
+/* Scene feedback (ADR 0016): client-only, driven by data attributes; never persisted. */
+@keyframes cq-needle-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(720deg);
+  }
+}
+@keyframes cq-needle-wobble {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-22deg);
+  }
+  75% {
+    transform: rotate(22deg);
+  }
+}
+@keyframes cq-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+@keyframes cq-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.cq-needle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cq-needle[data-needle="spin"] {
+  animation: cq-needle-spin 1.2s cubic-bezier(0.2, 0.8, 0.3, 1) 1;
+}
+.cq-needle[data-needle="wobble"] {
+  animation: cq-needle-wobble 0.6s ease-in-out 1;
+}
+.cq-shake {
+  animation: cq-shake 0.4s ease-in-out 1;
+}
+.cq-pop {
+  animation: cq-pop 0.35s ease-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cq-needle[data-needle],
+  .cq-shake,
+  .cq-pop {
+    animation: none;
+  }
+}

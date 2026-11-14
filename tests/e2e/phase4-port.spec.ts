@@ -53,7 +53,15 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
     await expect(child.getByTestId("npc-dialogue")).toContainText("Pip the Parrot");
     await child.getByRole("link", { name: /Lighthouse/ }).click();
     await expect(child.getByRole("heading", { name: "Lighthouse", exact: true })).toBeVisible();
-    await expect(child.getByTestId("lighthouse-hint")).not.toBeEmpty();
+    // One look per local day (ADR 0017): the button on the first visit of the day, the hint afterwards.
+    const lookOut = child.getByTestId("look-out");
+    if ((await lookOut.count()) > 0) {
+      expect((await lookOut.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await lookOut.click();
+    }
+    await expect(child.getByTestId("lighthouse-hint")).toHaveAttribute("data-looked", "true");
+    await expect(child.getByTestId("look-out")).toHaveCount(0);
+    await expect(child.getByTestId("lighthouse-hint")).toContainText("Come back tomorrow");
     await child.getByRole("link", { name: "← Home Port" }).click();
 
     // Hidden cove: locked, available or already found depending on earlier runs; never an error.

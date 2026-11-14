@@ -148,6 +148,26 @@ describe("puzzles", () => {
     expect(verifier.verify(config, "garbage").correct).toBe(false);
   });
 
+  it("never sends the answer to the client and keeps feedback vague and theme-neutral", () => {
+    const verifier = getPuzzleVerifier("sequence-match");
+    const config = verifier.parseConfig({
+      symbols: ["N", "E", "S", "W"],
+      sequence: ["W", "S", "E", "N"],
+      hint: "follow the sun",
+    });
+    const view = verifier.toClientView(config);
+    expect(view).toEqual({ symbols: ["N", "E", "S", "W"], hint: "follow the sun" });
+    expect(JSON.stringify(view)).not.toContain("sequence");
+    // A near miss and a total miss get the same words: no per-position or per-symbol hints.
+    const near = verifier.verify(config, { sequence: ["W", "S", "E", "E"] });
+    const far = verifier.verify(config, { sequence: ["N", "N", "N", "N"] });
+    expect(near).toEqual(far);
+    expect(near.feedback).not.toMatch(/\d|compass|needle|pirate/i);
+    expect(verifier.verify(config, { sequence: ["W", "S", "E", "N"] }).feedback).not.toMatch(
+      /compass|needle|pirate/i,
+    );
+  });
+
   it("rejects unknown puzzle types", () => {
     expect(() => getPuzzleVerifier("nope")).toThrow();
   });

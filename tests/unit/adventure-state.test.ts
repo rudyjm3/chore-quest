@@ -13,6 +13,16 @@ describe("parseAdventureState", () => {
     expect(state.equipped).toEqual({ head: "cosmetic-captain-hat" });
     expect(state.flag).toBe(1);
   });
+  it("reads the lighthouse day and drops a malformed one without touching equipped", () => {
+    expect(parseAdventureState({ lighthouse: { lastLookDate: "2026-11-14" } }).lighthouse).toEqual({
+      lastLookDate: "2026-11-14",
+    });
+    for (const bad of [{ lastLookDate: 5 }, { lastLookDate: "yesterday" }, "x", null]) {
+      const state = parseAdventureState({ equipped: { head: "hat" }, lighthouse: bad });
+      expect(state.equipped).toEqual({ head: "hat" });
+      expect(state.lighthouse).toBeUndefined();
+    }
+  });
   it("falls back to empty for malformed stored JSON", () => {
     expect(parseAdventureState({ equipped: { head: 5 } })).toEqual({ equipped: {} });
     expect(parseAdventureState({ equipped: { "BAD SLOT": "x" } })).toEqual({ equipped: {} });
