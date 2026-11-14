@@ -5,11 +5,9 @@ import { notFound } from "next/navigation";
 import { QuestCard } from "@/components/shared/quest-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
-import {
-  ClaimChapterRewardButton,
-  SequencePuzzle,
-} from "@/features/adventures/components/adventure-actions";
-import { puzzleConfigSchema } from "@/game/schemas";
+import { ClaimChapterRewardButton } from "@/features/adventures/components/adventure-actions";
+import { PuzzlePanel } from "@/features/adventures/components/puzzle-panel";
+import { locationHasPage } from "@/features/adventures/location-view";
 import { getAssetManifest } from "@/game/themes";
 import { prisma } from "@/lib/db/prisma";
 import { requireChildContext } from "@/server/policies/context";
@@ -26,10 +24,9 @@ export default async function ChapterPage({ params }: PageProps<"/child/adventur
   const scene = chapter.sceneAssetKey
     ? manifest?.assets.find((a) => a.id === chapter.sceneAssetKey)
     : undefined;
-  const puzzles =
-    chapter.status === "LOCKED"
-      ? []
-      : await prisma.puzzleDefinition.findMany({ where: { chapterId: chapter.id } });
+  // Each puzzle is paired with the quest objective that uses it (display gate only; the server re-checks).
+  const puzzleObjectives =
+    chapter.status === "LOCKED" ? [] : chapter.quests.flatMap((q) => q.objectives);
 
   return (
     <div className="space-y-5">
@@ -67,23 +64,47 @@ export default async function ChapterPage({ params }: PageProps<"/child/adventur
               className="object-cover"
             />
           ) : null}
-          {chapter.locations.map((location) => (
-            <div
-              key={location.key}
-              className="absolute -translate-x-1/2 -translate-y-1/2 rounded-xl bg-pirate-ink/80 px-2 py-1 text-xs font-bold text-white"
-              style={{ left: `${location.position.x}%`, top: `${location.position.y}%` }}
-              title={location.description}
-            >
-              {location.kind === "npc"
-                ? "🧑‍✈️ "
-                : location.kind === "shop"
-                  ? "🏪 "
-                  : location.kind === "puzzle"
-                    ? "🧩 "
-                    : "📍 "}
-              {location.name}
-            </div>
-          ))}
+          {chapter.locations.map((location) => {
+            const label = (
+              <>
+                {location.kind === "npc"
+                  ? "🧑‍✈️ "
+                  : location.kind === "shop"
+                    ? "🏪 "
+                    : location.kind === "puzzle"
+                      ? "🧩 "
+                      : "📍 "}
+                {location.name}
+              </>
+            );
+            const position = { left: `${location.position.x}%`, top: `${location.position.y}%` };
+            const base =
+              "absolute -translate-x-1/2 -translate-y-1/2 rounded-xl bg-pirate-ink/80 px-2 py-1 text-xs font-bold text-white";
+            return locationHasPage(location) ? (
+              <Link
+                key={location.key}
+                href={`/child/adventure/${chapter.key}/${location.key}`}
+                className={`${base} flex min-h-11 min-w-11 items-center justify-center bg-pirate-gold! text-pirate-ink! ring-2 ring-white focus-visible:ring-4`}
+                style={position}
+                title={location.description}
+                data-testid="scene-location-link"
+              >
+                <span className="animate-bob inline-block" aria-hidden="true">
+                  ✨
+                </span>
+                {label}
+              </Link>
+            ) : (
+              <div
+                key={location.key}
+                className={base}
+                style={position}
+                title={location.description}
+              >
+                {label}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
@@ -122,28 +143,30 @@ export default async function ChapterPage({ params }: PageProps<"/child/adventur
         ))}
       </section>
 
-      {puzzles.map((puzzle) => {
-        const config = puzzleConfigSchema.parse(puzzle.config);
-        const data = config.data as { symbols?: string[]; hint?: string };
-        const objective = chapter.quests
-          .flatMap((q) => q.objectives)
-          .find((o) => o.type === "COMPLETE_PUZZLE");
-        if (objective?.completed)
-          return (
-            <p key={puzzle.id} className="text-center text-sm">
-              🧩 {puzzle.title} solved!
-            </p>
-          );
-        return (
-          <SequencePuzzle
-            key={puzzle.id}
-            puzzleId={puzzle.id}
-            title={puzzle.title}
-            symbols={data.symbols ?? []}
-            hint={data.hint}
-          />
-        );
-      })}
+      {chapter.status === "LOCKED"
+        ? null
+        : chapter.puzzles.map((puzzle) => {
+            const objective = puzzleObjectives.find(
+              (o) => o.type === "COMPLETE_PUZZLE" && o.puzzleKey === puzzle.key,
+            );
+            const waitingFor =
+              objective && !objective.available
+                ? (chapter.quests
+                    .flatMap((q) => q.objectives)
+                    .find((o) => o.key !== objective.key && !o.completed)?.title ?? null)
+                : null;
+            return (
+              <PuzzlePanel
+                key={puzzle.id}
+                ctx={ctx}
+                adventureKey={state.adventure.key}
+                chapterKey={chapter.key}
+                puzzleKey={puzzle.key}
+                available={objective?.available ?? true}
+                waitingFor={waitingFor}
+              />
+            );
+          })}
     </div>
   );
 }

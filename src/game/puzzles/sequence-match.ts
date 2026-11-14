@@ -13,6 +13,13 @@ const configSchema = z.object({
 });
 export type SequenceMatchConfig = z.infer<typeof configSchema>;
 
+/** What the browser may know about a sequence-match puzzle (never the sequence). */
+export const sequenceMatchClientViewSchema = z.object({
+  symbols: z.array(z.string()),
+  hint: z.string().nullable(),
+});
+export type SequenceMatchClientView = z.infer<typeof sequenceMatchClientViewSchema>;
+
 const answerSchema = z.object({ sequence: z.array(z.string()).max(12) });
 
 export const sequenceMatchPuzzle: PuzzleVerifier<SequenceMatchConfig> = {
@@ -32,7 +39,12 @@ export const sequenceMatchPuzzle: PuzzleVerifier<SequenceMatchConfig> = {
       given.length === config.sequence.length && given.every((s, i) => s === config.sequence[i]);
     return {
       correct,
-      feedback: correct ? "The compass needle spins and settles!" : "Not quite. Try again.",
+      // Theme-neutral and deliberately vague: never say how many symbols or which positions were right.
+      feedback: correct ? "You solved it!" : "Not quite. Try again.",
     };
+  },
+  toClientView(config) {
+    // `sequence` (the answer) stays on the server.
+    return { symbols: config.symbols, hint: config.hint ?? null };
   },
 };
