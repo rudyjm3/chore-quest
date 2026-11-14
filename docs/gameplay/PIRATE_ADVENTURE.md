@@ -39,6 +39,19 @@ Locations: Pip the Parrot (NPC), Feather Grove (quest board), Compass Shrine (pu
 - **Puzzle `compass-puzzle`** — type `sequence-match`, symbols N E S W, answer N → E → S → W, hint from Pip.
   Puzzle reward 10 coins / 20 XP.
 
+### Parrot Island scene (feather grove, compass shrine)
+
+Each chapter scene lists its locations. A `quest-board` location with a `questKey` and a `puzzle` location with a `puzzleKey` are links to
+`/child/adventure/<chapterKey>/<locationKey>` (ADR 0015); the other kinds stay labels.
+
+- **Feather Grove** shows the quest card for `recover-the-compass` and a row of round slots, one per compass feather (`currentCount` of
+  `targetCount` of the `collect-feathers` objective). Only this child's progress is shown; finishing chores fills slots.
+- **Compass Shrine** shows "not ready yet" with the first unfinished objective until the feathers are collected, then the puzzle. The browser
+  receives only `symbols` and `hint` (the verifier's `toClientView`), never the answer. Wrong attempts get one vague line, never which symbols or
+  positions were right.
+- **Feedback**: a needle dial spins when the server says "solved" and wobbles on a wrong attempt; a sound toggle (off by default, remembered on
+  this device only) plays a short synthesised chime. All of it is CSS/SVG and client-only (ADR 0016) and is switched off by `prefers-reduced-motion`.
+
 ## Economy
 
 - Drip: every approved activity while the adventure is active gives 5 coins and 10 XP.
@@ -63,7 +76,7 @@ current assets are flat-colour placeholders flagged `placeholder: true` in the m
 
 Phase 4 delivered the supply shop and the treasure chest, and the Home Port slice built the rest (all at `/child/port`, reachable from "More"):
 quest board ✅, crew camp ✅ (ADR 0013), lighthouse ✅, Pip dialogue ✅ and hidden cove ✅ (ADR 0014), with placeholder art through the manifest.
-Differences from the original note: the lighthouse is repeatable (no once-per-day state yet); quest descriptions are always visible instead of on tap;
+Differences from the original note: the lighthouse allows one look per household-local day (`state.lighthouse.lastLookDate`, ADR 0017: the hint appears after the look); quest descriptions are always visible instead of on tap;
 the cove requires a `map-fragment` and rewards the `cove-pearl` collectible; Pip's line rotates by household-local date and appears on the hub.
 
 - **Quest board.** Read-only list of the chapter's `ACTIVE` quests and their objectives from `getAdventureState` (title, progress `current/target`,
@@ -72,8 +85,8 @@ the cove requires a `map-fragment` and rewards the `cove-pearl` collectible; Pip
   validated by a Zod schema in `src/game/schemas`. A service action (`equipCosmetic`) locks the child row, checks the child owns the item and the slot
   matches `config.slot`, then writes the small state. It is never read for rewards or progress; animation state (bobbing, hover) stays in
   client-only Zustand.
-- **Lighthouse.** A once-per-day "look out to sea" interaction that surfaces the next unlock hint for the current chapter; purely read-only
-  text from chapter config (`hint` field), so it needs a config key and validation, no state.
+- **Lighthouse.** A once-per-day "look out to sea" interaction that surfaces the next unlock hint for the current chapter; the text is read-only
+  chapter config (`hint`), the daily limit is the small `lighthouse.lastLookDate` state key written by `lookOutFromLighthouse` (ADR 0017).
 - **Hidden cove.** Gated by an achievement or collectible (`requiresItemKey`, reusing ADR 0012 rules); the first visit grants a small one-time
   reward through `grantItem` with a `sourceKey` per child and cove. Needs an ADR before it is built because it adds a reward source.
 - **Pip dialogue.** Static, theme-authored lines keyed by situation (`greeting`, `quest-complete`, `low-supplies`), selected by pure functions over engine state.
