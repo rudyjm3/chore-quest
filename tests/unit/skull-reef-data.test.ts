@@ -114,12 +114,12 @@ describe("Skull Reef theme data", () => {
     }
   });
 
-  it("Whispering Jungle stays an empty placeholder", () => {
-    const jungle = pirateAdventure.chapters.find((c) => c.key === "whispering-jungle")!;
-    expect(jungle.status).toBe("PLACEHOLDER");
-    expect(jungle.quests).toEqual([]);
-    expect(jungle.puzzles).toEqual([]);
-    expect(jungle.config.locations).toEqual([]);
+  it("Treasure Island stays an empty placeholder", () => {
+    const island = pirateAdventure.chapters.find((c) => c.key === "treasure-island")!;
+    expect(island.status).toBe("PLACEHOLDER");
+    expect(island.quests).toEqual([]);
+    expect(island.puzzles).toEqual([]);
+    expect(island.config.locations).toEqual([]);
   });
 });
 

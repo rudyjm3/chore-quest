@@ -8,8 +8,8 @@ import {
   levelForXp,
   missingRequirements,
   parseObjectiveConfig,
-  itemGateMet,
-  puzzleItemGate,
+  puzzleItemGates,
+  unmetItemGates,
 } from "@/game/engine";
 import { getPuzzleVerifier } from "@/game/puzzles";
 import {
@@ -477,20 +477,26 @@ export async function getPuzzleForChild(
   if (!cp || cp.status === "LOCKED") throw AppError.forbidden("This puzzle is not available yet");
   const config = puzzleConfigSchema.parse(puzzle.config);
   const verifier = getPuzzleVerifier(puzzle.type);
-  const gate = puzzleItemGate(
+  const gates = puzzleItemGates(
     chapterConfigSchema.parse(puzzle.chapter.config).locations,
     puzzle.key,
   );
+  const unmet = unmetItemGates(gates, inventory);
+  const shown = gates.map((g) => ({
+    itemKey: g.itemKey,
+    quantity: g.quantity,
+    met: !unmet.some((u) => u.itemKey === g.itemKey),
+  }));
   return {
     id: puzzle.id,
     key: puzzle.key,
     title: puzzle.title,
     type: puzzle.type,
     solved: Boolean(solved),
-    /** The item the place needs the child to hold (display only; submit re-checks under the lock). */
-    gate: gate
-      ? { itemKey: gate.itemKey, quantity: gate.quantity, met: itemGateMet(gate, inventory) }
-      : null,
+    /** Every item the place needs the child to hold (display only; submit re-checks under the lock). */
+    gates: shown,
+    /** The first gate still unmet, else the first one, else null (kept for single-item readers). */
+    gate: shown.find((g) => !g.met) ?? shown[0] ?? null,
     view: verifier.toClientView(verifier.parseConfig(config.data)),
   };
 }
@@ -525,14 +531,16 @@ export async function submitPuzzleAnswer(
 
     // The place may need the child to hold enough of an item (never consumed, ADR 0019).
     const chapterConfig = chapterConfigSchema.parse(puzzle.chapter.config);
-    const itemGate = puzzleItemGate(chapterConfig.locations, puzzle.key);
-    if (itemGate && !itemGateMet(itemGate, await inventoryByItemKey(tx, ctx.childId))) {
-      const named = await tx.itemDefinition.findUnique({
-        where: { key: itemGate.itemKey },
-        select: { name: true },
+    const itemGates = puzzleItemGates(chapterConfig.locations, puzzle.key);
+    const missing = unmetItemGates(itemGates, await inventoryByItemKey(tx, ctx.childId));
+    if (missing.length > 0) {
+      const named = await tx.itemDefinition.findMany({
+        where: { key: { in: missing.map((g) => g.itemKey) } },
+        select: { key: true, name: true },
       });
+      const nameOf = (key: string) => named.find((n) => n.key === key)?.name ?? "more items";
       throw AppError.invalidState(
-        `You need ${itemGate.quantity} × ${named?.name ?? "more items"} to try this`,
+        `You need ${missing.map((g) => `${g.quantity} × ${nameOf(g.itemKey)}`).join(", ")} to try this`,
       );
     }
     await ensureChapterProgress(tx, {

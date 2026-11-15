@@ -1,3 +1,4 @@
+import { clueOrderPuzzle } from "./clue-order";
 import { pairMatchPuzzle } from "./pair-match";
 import { routePlanPuzzle } from "./route-plan";
 import { sequenceMatchPuzzle } from "./sequence-match";
@@ -7,6 +8,7 @@ const verifiers: Record<string, PuzzleVerifier> = {
   [sequenceMatchPuzzle.type]: sequenceMatchPuzzle as PuzzleVerifier,
   [pairMatchPuzzle.type]: pairMatchPuzzle as PuzzleVerifier,
   [routePlanPuzzle.type]: routePlanPuzzle as PuzzleVerifier,
+  [clueOrderPuzzle.type]: clueOrderPuzzle as PuzzleVerifier,
 };
 
 export function getPuzzleVerifier(type: string): PuzzleVerifier {

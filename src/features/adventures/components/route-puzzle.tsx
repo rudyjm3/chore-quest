@@ -79,7 +79,7 @@ export function RoutePuzzle({
         y: ship.y + (move === "down" ? 1 : move === "up" ? -1 : 0),
       };
       const onBoard = to.x >= 0 && to.y >= 0 && to.x < board.width && to.y < board.height;
-      setAnnounce(onBoard ? "A reef is in the way." : "That is the edge of the chart.");
+      setAnnounce(onBoard ? "A rock is in the way." : "That is the edge of the chart.");
       return;
     }
     setMoves([...moves, move]);
@@ -124,7 +124,7 @@ export function RoutePuzzle({
         setAttempts((n) => n + 1);
         setVerdict({
           kind: "wrong",
-          message: `${data.feedback ?? "Not quite."} Get the ship all the way to the goal without touching a reef.`,
+          message: `${data.feedback ?? "Not quite."} Get the ship all the way to the goal without touching a rock.`,
         });
       }
     });
@@ -174,13 +174,13 @@ export function RoutePuzzle({
       ) : (
         <>
           <p className="text-sm font-bold">
-            Plan a route from ⚓ to 🏴‍☠️ without touching a 🪨 reef.
+            Plan a route from ⚓ to 🏴‍☠️ without touching a 🪨 rock.
           </p>
           <div
             key={attempts}
             tabIndex={0}
             role="group"
-            aria-label={`Sea chart, ${board.width} columns by ${board.height} rows. Start at ${spoken(board.start)}. Goal at ${spoken(board.goal)}. Reefs at ${reefList || "none"}. Ship at ${spoken(ship)}. Use the arrow keys or the buttons to move.`}
+            aria-label={`Sea chart, ${board.width} columns by ${board.height} rows. Start at ${spoken(board.start)}. Goal at ${spoken(board.goal)}. Rocks at ${reefList || "none"}. Ship at ${spoken(ship)}. Use the arrow keys or the buttons to move.`}
             onKeyDown={onBoardKey}
             data-testid="route-board"
             className={`mx-auto grid w-full max-w-sm gap-1 rounded-2xl bg-pirate-sea/30 p-2 ${

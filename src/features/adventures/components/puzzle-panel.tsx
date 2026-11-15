@@ -1,4 +1,5 @@
 import {
+  clueOrderClientViewSchema,
   pairMatchClientViewSchema,
   routePlanClientViewSchema,
   sequenceMatchClientViewSchema,
@@ -7,6 +8,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { ChildContext } from "@/server/policies/context";
 import { getPuzzleForChild } from "@/server/services/adventure.service";
 
+import { CluePuzzle } from "./clue-puzzle";
 import { PairPuzzle } from "./pair-puzzle";
 import { RoutePuzzle } from "./route-puzzle";
 import { SequencePuzzle } from "./sequence-puzzle";
@@ -47,16 +49,21 @@ export async function PuzzlePanel({
       </p>
     );
   }
-  if (puzzle.gate && !puzzle.gate.met && !puzzle.solved) {
-    const need = puzzle.gate.quantity - (inventory?.[puzzle.gate.itemKey] ?? 0);
+  const missing = puzzle.gates.filter((g) => !g.met);
+  if (missing.length > 0 && !puzzle.solved) {
+    const names = (key: string) => itemNames?.[key] ?? "more items";
+    const needs = missing.map((g) => `${g.quantity} × ${names(g.itemKey)}`).join(" and ");
+    const short = missing
+      .map((g) => g.quantity - (inventory?.[g.itemKey] ?? 0))
+      .filter((n) => n > 0);
     return (
       <p
         className="rounded-3xl border-4 border-dashed border-pirate-wood/50 p-5 text-center"
         data-testid="puzzle-gated"
       >
-        🔒 {puzzle.title} needs {puzzle.gate.quantity} ×{" "}
-        {itemNames?.[puzzle.gate.itemKey] ?? "more items"} in your hold
-        {need > 0 && inventory ? ` (${need} more)` : ""}. Keep finishing chores to collect them.
+        🔒 {puzzle.title} needs {needs} in your hold
+        {inventory && short.length > 0 && missing.length === 1 ? ` (${short[0]} more)` : ""}. Keep
+        finishing chores to collect {missing.length === 1 ? "it" : "them"}.
       </p>
     );
   }
@@ -68,6 +75,20 @@ export async function PuzzlePanel({
         title={puzzle.title}
         parts={view.parts}
         tools={view.tools}
+        hint={view.hint}
+        solved={puzzle.solved}
+      />
+    );
+  }
+  if (puzzle.type === "clue-order") {
+    const view = clueOrderClientViewSchema.parse(puzzle.view);
+    return (
+      <CluePuzzle
+        puzzleId={puzzle.id}
+        title={puzzle.title}
+        items={view.items}
+        slots={view.slots}
+        clues={view.clues}
         hint={view.hint}
         solved={puzzle.solved}
       />

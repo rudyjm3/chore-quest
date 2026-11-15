@@ -336,7 +336,7 @@ describe("Skull Reef: the Kraken's three stages", () => {
 });
 
 describe("Skull Reef: the whole chapter", () => {
-  it("finishes, claims its reward once, and unlocks only the placeholder Whispering Jungle", async () => {
+  it("finishes, claims its reward once, and unlocks Whispering Jungle", async () => {
     const h = await atTheReef();
     const kid = h.kids[0]!;
     await h.approve(kid.child.id, "HYGIENE");
@@ -352,13 +352,10 @@ describe("Skull Reef: the whole chapter", () => {
 
     const reef = await statusOf(kid.ctx, "skull-reef");
     expect(reef.status).toBe("COMPLETED");
-    // Whispering Jungle opens as the same empty placeholder: no quests, no puzzles, no places.
+    // Whispering Jungle opens (it has its own content since ADR 0021; see whispering-jungle.test.ts).
     const jungle = await statusOf(kid.ctx, "whispering-jungle");
     expect(jungle.status).toBe("UNLOCKED");
-    expect(jungle.definitionStatus).toBe("PLACEHOLDER");
-    expect(jungle.quests).toEqual([]);
-    expect(jungle.puzzles).toEqual([]);
-    expect(jungle.locations).toEqual([]);
+    expect(jungle.definitionStatus).toBe("PLAYABLE");
 
     const before = await getWallets(db, kid.child.id);
     const fragments = (await inventoryByItemKey(db, kid.child.id))["map-fragment"] ?? 0;
