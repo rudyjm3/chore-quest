@@ -177,7 +177,7 @@ export const pirateItems: ItemDefinitionInput[] = [
     rarity: "LEGENDARY",
     iconKey: "ship.legendary",
     maxQuantity: 1,
-    config: { tier: 5, costCoins: 1500, requiresChapterKey: "whispering-jungle" },
+    config: { tier: 5, costCoins: 1000, requiresChapterKey: "whispering-jungle" },
   },
   // --- Ship upgrades (cosmetic/progression) ---
   {

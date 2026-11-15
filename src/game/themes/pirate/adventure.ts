@@ -382,7 +382,7 @@ const definition: AdventureDefinitionInput = {
           ],
         },
         completion: { requiresQuestKeys: ["navigate-the-reef", "defeat-the-kraken"] },
-        rewards: { coins: 125, xp: 250, items: [{ itemKey: "map-fragment", quantity: 1 }] },
+        rewards: { coins: 175, xp: 250, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 66, y: 40 },
         hint: "Something spooky lies beyond the fog. Finish the cove, then sail there in the Voyager Ship from the supply shop.",
         sceneAssetKey: "scene.skull-reef",
@@ -482,10 +482,10 @@ const definition: AdventureDefinitionInput = {
           title: "Defeat the Kraken",
           description:
             "The Kraken guards the way through. Outwit it in three steps, one after the other.",
-          rewardCoins: 60,
+          rewardCoins: 100,
           rewardXp: 120,
           config: {
-            rewards: { coins: 60, xp: 120, items: [{ itemKey: "kraken-tooth", quantity: 1 }] },
+            rewards: { coins: 100, xp: 120, items: [{ itemKey: "kraken-tooth", quantity: 1 }] },
             requiresQuestKey: "navigate-the-reef",
           },
           objectives: [
@@ -647,7 +647,7 @@ const definition: AdventureDefinitionInput = {
         // No ship gate: the captain ship (800 coins) is out of reach of the coins earned so far (ADR 0021).
         unlock: { requires: [{ type: "CHAPTER_COMPLETED", chapterKey: "skull-reef" }] },
         completion: { requiresQuestKeys: ["follow-the-clues", "open-the-temple"] },
-        rewards: { coins: 150, xp: 300, items: [{ itemKey: "map-fragment", quantity: 1 }] },
+        rewards: { coins: 200, xp: 300, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 80, y: 58 },
         hint: "The jungle whispers to brave sailors who finish the reef. Finish chores to find the old artifacts.",
         sceneAssetKey: "scene.whispering-jungle",
@@ -715,9 +715,9 @@ const definition: AdventureDefinitionInput = {
           title: "Follow the Clues",
           description:
             "Search for three artifacts one after the other, then read the clues at the ruins to set them in the right places.",
-          rewardCoins: 50,
+          rewardCoins: 70,
           rewardXp: 100,
-          config: { rewards: { coins: 50, xp: 100, items: [] } },
+          config: { rewards: { coins: 70, xp: 100, items: [] } },
           objectives: [
             {
               key: "find-the-idol",
@@ -765,10 +765,10 @@ const definition: AdventureDefinitionInput = {
           kind: "MAIN",
           title: "Open the Temple",
           description: "Two steps, one after the other: read the glyphs, then cross the vine maze.",
-          rewardCoins: 70,
+          rewardCoins: 110,
           rewardXp: 140,
           config: {
-            rewards: { coins: 70, xp: 140, items: [] },
+            rewards: { coins: 110, xp: 140, items: [] },
             requiresQuestKey: "follow-the-clues",
           },
           objectives: [

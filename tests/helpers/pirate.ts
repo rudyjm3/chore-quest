@@ -133,3 +133,21 @@ export async function finishSkullReef(h: Household, kid: Kid = h.kids[0]!) {
   });
   await claimChapterReward(db, kid.ctx, await chapterId("skull-reef"));
 }
+
+export const RUINS_ORDER = { order: ["statue", "idol", "bowl", "mask", "key"] };
+export const TEMPLE_GLYPHS = {
+  pairs: { sun: "day", moon: "night", snake: "danger", wave: "water", flame: "warmth" },
+};
+export const TEMPLE_MAZE = {
+  moves: ["up", "up", "right", "up", "right", "right", "right", "right", "right", "up", "up", "up"],
+};
+
+/** Whispering Jungle played through and its reward claimed. Buys only the explorer and the voyager. */
+export async function finishWhisperingJungle(h: Household, kid: Kid = h.kids[0]!) {
+  await finishSkullReef(h, kid);
+  await h.approve(kid.child.id, "CHORE", 6);
+  await submitPuzzleAnswer(db, kid.ctx, await puzzleId("ruins-puzzle"), RUINS_ORDER);
+  await submitPuzzleAnswer(db, kid.ctx, await puzzleId("temple-glyphs"), TEMPLE_GLYPHS);
+  await submitPuzzleAnswer(db, kid.ctx, await puzzleId("temple-maze"), TEMPLE_MAZE);
+  await claimChapterReward(db, kid.ctx, await chapterId("whispering-jungle"));
+}

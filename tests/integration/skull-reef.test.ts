@@ -237,8 +237,8 @@ describe("Skull Reef: chart pieces and the route puzzle", () => {
       ["find-the-weak-points", false],
       ["steer-to-safety", false],
     ]);
-    // 5 chores (25), puzzle 20, quest 40.
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 25 + 20 + 40);
+    // 5 chores (25), puzzle 20, quest 40, Reef Navigator achievement 50.
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 25 + 20 + 40 + 50);
   });
 });
 
@@ -307,8 +307,8 @@ describe("Skull Reef: the Kraken's three stages", () => {
     const kraken = await questStatus(kid, "defeat-the-kraken");
     expect(kraken.status).toBe("CLAIMED");
     expect(kraken.objectives.every((o) => o.completed)).toBe(true);
-    // 10 + 15 + 20 for the stages, 60 for the quest.
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(coins + 10 + 15 + 20 + 60);
+    // 10 + 15 + 20 for the stages, 50 for Kraken Slayer, 100 for the quest.
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(coins + 10 + 15 + 20 + 50 + 100);
     expect((await inventoryByItemKey(db, kid.child.id))["kraken-tooth"]).toBe(1);
 
     // Nothing was ever spent: the chart pieces are still in the hold.
@@ -365,7 +365,7 @@ describe("Skull Reef: the whole chapter", () => {
       claimChapterReward(db, kid.ctx, reef.id),
     ]);
     expect(results.filter((r) => r.claimed)).toHaveLength(1);
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(before.COINS + 125);
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(before.COINS + 175);
     expect((await getWallets(db, kid.child.id)).XP).toBe(before.XP + 250);
     expect((await inventoryByItemKey(db, kid.child.id))["map-fragment"]).toBe(fragments + 1);
   });
@@ -464,8 +464,8 @@ describe("Skull Reef: puzzle race", () => {
     expect(await db.puzzleAttempt.count({ where: { childId: kid.child.id, puzzleId: id } })).toBe(
       1,
     );
-    // Puzzle reward (20) and quest reward (40), once each.
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 20 + 40);
+    // Puzzle reward (20), quest reward (40) and the Reef Navigator achievement (50), once each.
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 20 + 40 + 50);
     expect(
       await db.rewardLedgerEntry.count({
         where: {

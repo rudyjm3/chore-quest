@@ -23,7 +23,7 @@ describe("Skull Reef theme data", () => {
     ]);
     // The chapter reward is the configured one.
     expect(reef.config.rewards).toEqual({
-      coins: 125,
+      coins: 175,
       xp: 250,
       items: [{ itemKey: "map-fragment", quantity: 1 }],
     });
