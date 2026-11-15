@@ -355,7 +355,7 @@ Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
   animation is off under `prefers-reduced-motion`.
 - **Bundle pass**: see numbers below. Only the quest detail dialog is code-split.
 
-**Test counts** (`pnpm check`): see the final numbers below. E2E `phase4-port.spec.ts` now also covers the quest detail (open, steps, reward, ≥44px, Escape,
+**Test counts** (`pnpm check`): unit **124** (was 116), integration **196** (was 195). E2E **57 passed, 12 skipped** (mobile, by design; unchanged, the new checks extend `phase4-port.spec.ts`). `pnpm format:check` clean; no schema drift (no migration). E2E `phase4-port.spec.ts` now also covers the quest detail (open, steps, reward, ≥44px, Escape,
 focus return) and the ship scene (hat shown after wearing, cleared after taking it off).
 
 **Measurements** (production build, headless Chromium at 390px, cold cache per page, gzip transfer size of `Script` requests; each row is one load):
