@@ -195,9 +195,9 @@ describe("Shipwreck Cove: salvage and repair", () => {
     inv = await inventoryByItemKey(db, kid.child.id);
     expect(inv["salvage-plank"]).toBe(4);
 
-    // Planks are done, so a hygiene chore now becomes rope; a plain chore does not.
+    // Planks are done, so the next approvals of any category become rope.
     await h.approve(kid.child.id, "CHORE", 1);
-    expect((await inventoryByItemKey(db, kid.child.id))["rope-coil"]).toBeUndefined();
+    expect((await inventoryByItemKey(db, kid.child.id))["rope-coil"]).toBe(1);
     await h.approve(kid.child.id, "HYGIENE");
     await h.approve(kid.child.id, "SCHOOL");
     await h.approve(kid.child.id, "PET_CARE");
@@ -213,6 +213,20 @@ describe("Shipwreck Cove: salvage and repair", () => {
       ["gather-rope", 3, true],
       ["repair-the-ship", 0, false],
     ]);
+  });
+
+  it("a household whose only approved tasks are plain chores can still finish the quest", async () => {
+    const h = await atTheCove();
+    const kid = h.kids[0]!;
+    await h.approve(kid.child.id, "CHORE", 7); // 4 planks, then 3 rope
+    const inv = await inventoryByItemKey(db, kid.child.id);
+    expect(inv["salvage-plank"]).toBe(4);
+    expect(inv["rope-coil"]).toBe(3);
+
+    await submitPuzzleAnswer(db, kid.ctx, await puzzleId("repair-puzzle"), ANSWER);
+    const cove = await statusOf(kid.ctx, "shipwreck-cove");
+    expect(cove.quests.find((q) => q.key === "salvage-the-wreck")!.status).toBe("CLAIMED");
+    expect(cove.status).toBe("COMPLETED");
   });
 
   it("the side quest counts helping and pet care approvals and pays out once", async () => {
