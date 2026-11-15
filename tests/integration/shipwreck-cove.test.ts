@@ -173,8 +173,9 @@ describe("Shipwreck Cove: the ship gates the chapter", () => {
         costCoins: number;
       }
     ).costCoins;
-    // 7 chores x 5 + quests (20 + 30) + puzzle 10 + Home Port chapter 50 + achievements, before the
-    // Parrot Island chapter reward of 75. Documented in the build health report.
+    // Measured: 210 coins at completion (7 chores x 5 = 35, quests 20 + 30, compass puzzle 10, Home Port
+    // chapter reward 50, achievements 10 + 25 + 30), 285 once the Parrot Island reward of 75 is claimed.
+    // So the 150-coin ship is affordable with 60 to spare before any chapter reward is claimed.
     expect(price).toBe(150);
     expect(atCompletion).toBeGreaterThanOrEqual(price);
     expect(afterClaim).toBeGreaterThanOrEqual(price + 75);
