@@ -62,8 +62,8 @@ Locations: Salvage Yard (quest board for the main quest), Tide Pools (quest boar
 
 - **Main quest `salvage-the-wreck`** (40 coins / 80 XP), three objectives that run side by side:
   1. `gather-planks`: 4 approved activities of any category, each grants 1 `salvage-plank`.
-  2. `gather-rope`: 3 approved activities in `HYGIENE`, `SCHOOL` or `PET_CARE`, each grants 1 `rope-coil`. A completion feeds the first
-     objective that accepts it, so planks fill first; routine runs have no category and do not count.
+  2. `gather-rope`: 3 approved activities of any category, each grants 1 `rope-coil`. A completion feeds the first
+     objective that accepts it, so planks fill first and rope next (a household with only plain chores can finish); routine runs count like any other approved activity, as they already did for planks.
   3. `repair-the-ship`: solve `repair-puzzle`.
 - **Side mission `tide-pool-treasures`** (15 coins / 25 XP): 2 approved `HELPING` or `PET_CARE` activities. Optional.
 - **The Wreck** needs the child to **hold 4 `salvage-plank`** (`requiresItemKey` + `requiresItemQuantity`). Salvage is only held, never spent: there

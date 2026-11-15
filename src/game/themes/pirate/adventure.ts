@@ -278,7 +278,7 @@ const definition: AdventureDefinitionInput = {
           kind: "MAIN",
           title: "Salvage the Wreck",
           description:
-            "Gather planks and rope from the wreck, then repair the ship. Planks come from chores and helping out; rope comes from hygiene, school and pet care.",
+            "Gather planks and rope from the wreck, then repair the ship. Planks come first from any approved chore; once you have enough, the next chores become rope.",
           rewardCoins: 40,
           rewardXp: 80,
           config: { rewards: { coins: 40, xp: 80, items: [] } },
@@ -296,7 +296,8 @@ const definition: AdventureDefinitionInput = {
               type: "APPROVED_ACTIVITIES",
               targetCount: 3,
               config: {
-                eligibility: { categories: ["HYGIENE", "SCHOOL", "PET_CARE"] },
+                // Any category: planks come first (first matching objective), so rope can never dead-end.
+                eligibility: {},
                 grantItemKey: "rope-coil",
                 grantQuantity: 1,
               },
