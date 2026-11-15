@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { ClaimChapterRewardButton } from "@/features/adventures/components/adventure-actions";
 import { PuzzlePanel } from "@/features/adventures/components/puzzle-panel";
-import { locationHasPage } from "@/features/adventures/location-view";
+import { locationHasPage, puzzleWaitingFor } from "@/features/adventures/location-view";
 import { getAssetManifest } from "@/game/themes";
 import { prisma } from "@/lib/db/prisma";
 import { requireChildContext } from "@/server/policies/context";
@@ -152,12 +152,13 @@ export default async function ChapterPage({ params }: PageProps<"/child/adventur
             const objective = puzzleObjectives.find(
               (o) => o.type === "COMPLETE_PUZZLE" && o.puzzleKey === puzzle.key,
             );
+            const owner = objective
+              ? chapter.quests.find((q) =>
+                  q.objectives.some((o) => o.key === objective.key && o.puzzleKey === puzzle.key),
+                )
+              : undefined;
             const waitingFor =
-              objective && !objective.available
-                ? (chapter.quests
-                    .flatMap((q) => q.objectives)
-                    .find((o) => o.key !== objective.key && !o.completed)?.title ?? null)
-                : null;
+              owner && objective ? puzzleWaitingFor(chapter.quests, owner, objective) : null;
             return (
               <PuzzlePanel
                 key={puzzle.id}

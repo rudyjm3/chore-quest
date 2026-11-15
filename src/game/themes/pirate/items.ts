@@ -41,6 +41,14 @@ export const pirateItems: ItemDefinitionInput[] = [
     config: { chapterKey: "shipwreck-cove" },
   },
   {
+    key: "chart-piece",
+    name: "Reef Chart Piece",
+    description: "A torn piece of sea chart. Hold five to plan a route through Skull Reef.",
+    type: "RESOURCE",
+    iconKey: "item.chart-piece",
+    config: { chapterKey: "skull-reef" },
+  },
+  {
     key: "gold-doubloon",
     name: "Gold Doubloon",
     description:
@@ -68,6 +76,16 @@ export const pirateItems: ItemDefinitionInput[] = [
     type: "COLLECTIBLE",
     rarity: "EPIC",
     iconKey: "item.magic-compass",
+    maxQuantity: 1,
+    config: {},
+  },
+  {
+    key: "kraken-tooth",
+    name: "Kraken Tooth",
+    description: "A trophy from the Kraken of Skull Reef. Few captains ever see one.",
+    type: "COLLECTIBLE",
+    rarity: "EPIC",
+    iconKey: "item.kraken-tooth",
     maxQuantity: 1,
     config: {},
   },

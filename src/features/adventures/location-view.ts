@@ -11,6 +11,8 @@ export interface LocationObjective {
   completed: boolean;
   puzzleKey: string | null;
   available: boolean;
+  /** The objective of the same quest that must be done first (ADR 0020), when the engine chained it. */
+  requiresObjectiveKey?: string | null | undefined;
 }
 
 export interface LocationQuest {
@@ -19,6 +21,8 @@ export interface LocationQuest {
   title: string;
   description: string | null;
   status: string;
+  /** The quest that must be finished first, when this one is chained behind another. */
+  requiresQuestKey?: string | null | undefined;
   rewards: { coins: number; xp: number; items: Array<{ itemKey: string; quantity: number }> };
   objectives: LocationObjective[];
 }
@@ -33,6 +37,26 @@ export interface LocationChapter {
     questKey?: string | undefined;
     puzzleKey?: string | undefined;
   }>;
+}
+
+/**
+ * What a puzzle that is not available yet is waiting for: the earlier quest it is chained behind, else the
+ * objective the engine says must be done first, else (older data without those hints) the first other unfinished
+ * objective. Display only; the server enforces the order.
+ */
+export function puzzleWaitingFor(
+  quests: LocationQuest[],
+  quest: LocationQuest,
+  objective: LocationObjective,
+): string | null {
+  if (objective.available) return null;
+  if (quest.status === "LOCKED" && quest.requiresQuestKey) {
+    return quests.find((q) => q.key === quest.requiresQuestKey)?.title ?? null;
+  }
+  if (objective.requiresObjectiveKey) {
+    return quest.objectives.find((o) => o.key === objective.requiresObjectiveKey)?.title ?? null;
+  }
+  return quest.objectives.find((o) => o.key !== objective.key && !o.completed)?.title ?? null;
 }
 
 export interface CollectionSlot {
@@ -108,9 +132,7 @@ export function buildLocationView(
       (o) => o.type === "COMPLETE_PUZZLE" && o.puzzleKey === puzzleKey,
     );
     if (!objective) continue;
-    const waiting = objective.available
-      ? null
-      : (quest.objectives.find((o) => o.key !== objective.key && !o.completed)?.title ?? null);
+    const waiting = puzzleWaitingFor(chapter.quests, quest, objective);
     return {
       kind: "puzzle",
       name: location.name,
