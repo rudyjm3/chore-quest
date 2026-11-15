@@ -1,8 +1,10 @@
+import { pairMatchPuzzle } from "./pair-match";
 import { sequenceMatchPuzzle } from "./sequence-match";
 import type { PuzzleVerifier } from "./types";
 
 const verifiers: Record<string, PuzzleVerifier> = {
   [sequenceMatchPuzzle.type]: sequenceMatchPuzzle as PuzzleVerifier,
+  [pairMatchPuzzle.type]: pairMatchPuzzle as PuzzleVerifier,
 };
 
 export function getPuzzleVerifier(type: string): PuzzleVerifier {
