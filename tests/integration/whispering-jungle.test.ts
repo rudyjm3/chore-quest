@@ -13,7 +13,15 @@ import { getWallets } from "@/server/services/reward.service";
 
 import { seedReferenceData } from "../../prisma/seed";
 import { disconnectTestDb, resetHouseholdData, testDb } from "../helpers/db";
-import { chapterId, finishSkullReef, household, puzzleId, type Household } from "../helpers/pirate";
+import {
+  buyShip,
+  chapterId,
+  finishSkullReef,
+  finishWhisperingJungle,
+  household,
+  puzzleId,
+  type Household,
+} from "../helpers/pirate";
 
 const db = testDb();
 beforeEach(() => resetHouseholdData(db));
@@ -67,10 +75,10 @@ describe("Whispering Jungle: unlock and economy (ADR 0021)", () => {
       { type: "CHAPTER_COMPLETED", chapterKey: "skull-reef" },
     ]);
 
-    // Measured: 330 coins after buying the explorer (150) and voyager (400) and claiming every reward.
-    // The 800-coin captain ship is ~470 out of reach, which is why it is not a gate (ADR 0021).
+    // Measured: 520 coins after buying the explorer (150) and voyager (400) and claiming every reward
+    // (it was 330 before ADR 0022 raised the reef rewards). The jungle needs no ship (ADR 0021).
     const coins = (await getWallets(db, kid.child.id)).COINS;
-    expect(coins).toBe(330);
+    expect(coins).toBe(520);
     const captain = await db.itemDefinition.findUniqueOrThrow({ where: { key: "ship-captain" } });
     expect((captain.config as { costCoins: number }).costCoins).toBe(800);
     expect((await held(kid))["ship-captain"]).toBeUndefined();
@@ -180,7 +188,8 @@ describe("Whispering Jungle: the ruins need all three artifacts", () => {
     expect(await attemptsFor(kid, "ruins-puzzle")).toBe(7);
     const before = (await getWallets(db, kid.child.id)).COINS;
     expect((await submit(kid, "ruins-puzzle", RUINS)).correct).toBe(true);
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 25);
+    // Puzzle reward (25) and the Clue Reader achievement (50).
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 25 + 50);
     expect((await submit(kid, "ruins-puzzle", RUINS)).alreadyCompleted).toBe(true);
     // Held, not spent.
     const inventory = await held(kid);
@@ -235,8 +244,8 @@ describe("Whispering Jungle: the temple in two steps", () => {
 
     const temple = await questOf(kid, "open-the-temple");
     expect(temple.status).toBe("CLAIMED");
-    // glyphs 20 + maze 25 + temple quest 70
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(coins + 20 + 25 + 70);
+    // glyphs 20 + maze 25 + Temple Explorer 50 + temple quest 110
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(coins + 20 + 25 + 50 + 110);
     expect(
       await db.rewardLedgerEntry.count({
         where: { childId: kid.child.id, amount: { lt: 0 }, sourceType: { not: "PURCHASE" } },
@@ -246,7 +255,7 @@ describe("Whispering Jungle: the temple in two steps", () => {
 });
 
 describe("Whispering Jungle: the whole chapter", () => {
-  it("completes, pays its reward once, and leaves Treasure Island as an empty placeholder", async () => {
+  it("completes, pays its reward once, and Treasure Island then needs only the legendary ship", async () => {
     const h = await atTheJungle();
     const kid = h.kids[0]!;
     await findArtifacts(h, kid);
@@ -263,6 +272,7 @@ describe("Whispering Jungle: the whole chapter", () => {
     expect(locked.status).toBe("LOCKED");
     expect(locked.missingRequirements).toEqual([
       { type: "ITEM", itemKey: "map-fragment", quantity: 5 },
+      { type: "ITEM", itemKey: "ship-legendary", quantity: 1 },
     ]);
 
     const before = await getWallets(db, kid.child.id);
@@ -273,16 +283,16 @@ describe("Whispering Jungle: the whole chapter", () => {
     ]);
     expect(results.filter((r) => r.claimed)).toHaveLength(1);
     const after = await getWallets(db, kid.child.id);
-    expect(after.COINS).toBe(before.COINS + 150);
+    expect(after.COINS).toBe(before.COINS + 200);
     expect(after.XP).toBe(before.XP + 300);
     expect((await held(kid))["map-fragment"]).toBe(5);
 
+    // The fifth fragment arrived with the claim; only the ship is still missing (ADR 0022).
     const island = await statusOf(kid.ctx, "treasure-island");
-    expect(island.status).toBe("UNLOCKED");
-    expect(island.definitionStatus).toBe("PLACEHOLDER");
-    expect(island.quests).toEqual([]);
-    expect(island.puzzles).toEqual([]);
-    expect(island.locations).toEqual([]);
+    expect(island.status).toBe("LOCKED");
+    expect(island.missingRequirements).toEqual([
+      { type: "ITEM", itemKey: "ship-legendary", quantity: 1 },
+    ]);
   });
 });
 
@@ -346,8 +356,8 @@ describe("Whispering Jungle: puzzle race", () => {
     expect(await db.puzzleAttempt.count({ where: { childId: kid.child.id, puzzleId: id } })).toBe(
       1,
     );
-    // Puzzle reward (25) and the first quest's reward (50), once each.
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 25 + 50);
+    // Puzzle reward (25), the first quest's reward (70) and the Clue Reader achievement (50), once each.
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(before + 25 + 70 + 50);
   });
 });
 
@@ -509,5 +519,28 @@ describe("ensure step: children who unlocked Whispering Jungle when it was a pla
     } finally {
       await seedReferenceData(url());
     }
+  });
+});
+
+describe("the legendary ship is affordable by the end of Whispering Jungle (ADR 0022)", () => {
+  it("a child who buys only the explorer and voyager holds enough coins once the jungle reward is claimed", async () => {
+    const h = await household();
+    const kid = h.kids[0]!;
+    await finishWhisperingJungle(h, kid);
+    const price = (
+      (await db.itemDefinition.findUniqueOrThrow({ where: { key: "ship-legendary" } })).config as {
+        costCoins: number;
+      }
+    ).costCoins;
+    // Measured: 330 after the reef became 520, and the jungle then adds 580 (chores, puzzles, achievements,
+    // quests and the 200-coin chapter reward) for 1100. The 1000-coin legendary ship leaves 100 to spare.
+    expect(price).toBe(1000);
+    const coins = (await getWallets(db, kid.child.id)).COINS;
+    expect(coins).toBe(1100);
+    expect(coins).toBeGreaterThanOrEqual(price);
+    // It is sold once the jungle is completed, and buying it needs no other ship.
+    const bought = await buyShip(h, kid, "ship-legendary");
+    expect(bought.replayed).toBe(false);
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(100);
   });
 });

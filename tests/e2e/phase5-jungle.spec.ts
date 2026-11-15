@@ -228,7 +228,7 @@ test.describe("phase 5: Whispering Jungle", () => {
       await page.getByTestId("puzzle-check").click();
       await expect(page.getByTestId("puzzle-solved")).toBeVisible();
 
-      // --- Chapter reward, and Treasure Island opens as a placeholder --------------------------------
+      // --- Chapter reward, and Treasure Island now waits for the legendary ship --------------------------------
       await page.goto("/child/adventure/whispering-jungle");
       await expect(page.getByText("Chapter complete!")).toBeVisible();
       await page.getByRole("button", { name: "Claim chapter reward" }).click();
@@ -242,11 +242,13 @@ test.describe("phase 5: Whispering Jungle", () => {
       const islandRow = page
         .getByTestId("chapter-list")
         .locator("li", { hasText: /^6\. Treasure Island/ });
-      await expect(islandRow).not.toContainText("Need");
+      // The fifth fragment is in the hold; only the legendary ship (ADR 0022) is still missing.
+      await expect(islandRow).toContainText("Need Legendary Ship");
+      await expect(islandRow).not.toContainText("map");
       const island = await db.childChapterProgress.findFirstOrThrow({
         where: { childId: child.id, chapter: { key: "treasure-island" } },
       });
-      expect(island.status).toBe("UNLOCKED");
+      expect(island.status).toBe("LOCKED");
     } finally {
       await db.family.delete({ where: { id: family.id } }).catch(() => undefined);
       await db.user.delete({ where: { id: user.id } }).catch(() => undefined);

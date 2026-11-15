@@ -4,14 +4,14 @@ Theme key: `pirate`. Source of truth: `src/game/themes/pirate/`. All numbers bel
 
 ## Chapters
 
-| #   | Key                 | Location          | Status      | Unlock                                              | Completion                                      | Reward                            |
-| --- | ------------------- | ----------------- | ----------- | --------------------------------------------------- | ----------------------------------------------- | --------------------------------- |
-| 1   | `home-port`         | Home Port         | PLAYABLE    | always                                              | quest `prepare-the-ship`                        | 50 coins, 100 XP, 1 map fragment  |
-| 2   | `parrot-island`     | Parrot Island     | PLAYABLE    | Home Port completed **and** 3 × `supply-crate`      | quest `recover-the-compass`                     | 75 coins, 150 XP, 1 map fragment  |
-| 3   | `shipwreck-cove`    | Shipwreck Cove    | PLAYABLE    | Parrot Island completed **and** 1 × `ship-explorer` | quest `salvage-the-wreck`                       | 100 coins, 200 XP, 1 map fragment |
-| 4   | `skull-reef`        | Skull Reef        | PLAYABLE    | Shipwreck Cove completed **and** 1 × `ship-voyager` | quests `navigate-the-reef`, `defeat-the-kraken` | 125 coins, 250 XP, 1 map fragment |
-| 5   | `whispering-jungle` | Whispering Jungle | PLAYABLE    | Skull Reef completed                                | quests `follow-the-clues`, `open-the-temple`    | 150 coins, 300 XP, 1 map fragment |
-| 6   | `treasure-island`   | Treasure Island   | PLACEHOLDER | Whispering Jungle completed **and** 5 map fragments | —                                               | 500 / 1000 / 1 fragment           |
+| #   | Key                 | Location          | Status   | Unlock                                                                    | Completion                                      | Reward                                          |
+| --- | ------------------- | ----------------- | -------- | ------------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
+| 1   | `home-port`         | Home Port         | PLAYABLE | always                                                                    | quest `prepare-the-ship`                        | 50 coins, 100 XP, 1 map fragment                |
+| 2   | `parrot-island`     | Parrot Island     | PLAYABLE | Home Port completed **and** 3 × `supply-crate`                            | quest `recover-the-compass`                     | 75 coins, 150 XP, 1 map fragment                |
+| 3   | `shipwreck-cove`    | Shipwreck Cove    | PLAYABLE | Parrot Island completed **and** 1 × `ship-explorer`                       | quest `salvage-the-wreck`                       | 100 coins, 200 XP, 1 map fragment               |
+| 4   | `skull-reef`        | Skull Reef        | PLAYABLE | Shipwreck Cove completed **and** 1 × `ship-voyager`                       | quests `navigate-the-reef`, `defeat-the-kraken` | 175 coins, 250 XP, 1 map fragment               |
+| 5   | `whispering-jungle` | Whispering Jungle | PLAYABLE | Skull Reef completed                                                      | quests `follow-the-clues`, `open-the-temple`    | 200 coins, 300 XP, 1 map fragment               |
+| 6   | `treasure-island`   | Treasure Island   | PLAYABLE | Whispering Jungle completed, 5 map fragments **and** 1 × `ship-legendary` | quest `find-the-treasure`                       | 1000 coins, 2000 XP, 1 fragment, treasure, flag |
 
 Six chapters → six map fragments. After completing chapters 1 and 2 and claiming both rewards the child
 holds two of six (integration-tested).
@@ -87,36 +87,49 @@ Whirlpool Gate (one Kraken stage each), Coral Shallows (side quest), Bone Wreck 
 
 - **Main quest `navigate-the-reef`** (40 coins / 80 XP): `collect-chart-pieces` (5 approved activities of any category, each grants 1 `chart-piece`), then
   `chart-the-course` (solve `reef-chart-puzzle`; the table opens only while the child holds the 5 pieces, so no objective chain is needed, as at the wreck).
-- **Main quest `defeat-the-kraken`** (60 coins / 120 XP, 1 `kraken-tooth`; `requiresQuestKey: navigate-the-reef`): three `COMPLETE_PUZZLE` objectives, each
+- **Main quest `defeat-the-kraken`** (100 coins / 120 XP, 1 `kraken-tooth`; `requiresQuestKey: navigate-the-reef`): three `COMPLETE_PUZZLE` objectives, each
   with `requiresObjectiveKey` on the one before: `kraken-tentacles` (`sequence-match`, 10 coins), `kraken-weak-points` (`pair-match`, 15 coins) and
   `kraken-escape` (`route-plan`, 20 coins). No new objective type, no reward path of its own and **no cost**: nothing is spent and no inventory debit exists. A stage
   of the Kraken quest cannot be solved before the chart quest is finished or out of order; the server refuses it and writes no attempt row.
 - **Side mission `reef-scavengers`** (20 coins / 30 XP): 2 approved `HYGIENE` or `SCHOOL` activities. Optional.
 - **Reef Chart Table** needs the child to hold 5 `chart-piece` (held, never consumed). **Puzzle `reef-chart-puzzle`** (`route-plan`, 5 x 5, 20 coins / 40 XP) and the
   6 x 6 `kraken-escape` board both have a blocked straight route.
-- Chapter reward 125 coins / 250 XP / 1 map fragment; both main quests complete the chapter. Whispering Jungle then unlocks.
+- Chapter reward 175 coins / 250 XP / 1 map fragment; both main quests complete the chapter. Achievements Reef Navigator (chart puzzle) and Kraken Slayer (escape puzzle) pay 50 coins each (ADR 0022). Whispering Jungle then unlocks.
 - Art is placeholder SVG (`chart-piece`, `kraken-tooth`, the reef scene) through the manifest.
 
 ## Whispering Jungle (chapter 5, ADR 0021)
 
-Unlock: Skull Reef completed. **No ship gate**: a child who buys only the explorer and the voyager holds 330 coins after the reef (integration-tested), so the 800-coin
-`ship-captain` is about 470 coins out of reach; it stays a shop purchase (needs Skull Reef completed) and nothing in progression requires it.
+Unlock: Skull Reef completed. **No ship gate**: the 800-coin `ship-captain` is out of economic reach, so it stays an optional shop purchase (needs Skull Reef completed) and nothing in progression requires it. A child who buys only the explorer and the voyager holds 520 coins after the reef once ADR 0022 raised its rewards (330 before).
 
 Locations: Quest Board (artifact quest), Ancient Ruins (puzzle, needs all three artifacts), Temple Watch (quest board for the temple quest), Glyph Wall and Vine Maze
 (one temple step each), Explorers' Camp (side quest), Waterfall (decorative).
 
-- **Main quest `follow-the-clues`** (50 coins / 100 XP): `find-the-idol`, `find-the-mask`, `find-the-key` (each 2 approved activities of any category, chained with `requiresObjectiveKey`;
+- **Main quest `follow-the-clues`** (70 coins / 100 XP): `find-the-idol`, `find-the-mask`, `find-the-key` (each 2 approved activities of any category, chained with `requiresObjectiveKey`;
   each grants one artifact: `jade-idol`, `stone-mask`, `sun-key`, `maxQuantity` 1), then `read-the-ruins` (solve `ruins-puzzle`). The engine grants per unit of progress, so an artifact
   appears on the **first** chore of its search and the second finishes the objective.
 - **Ancient Ruins** need the child to hold **all three artifacts at once** (`requiresItems`). They are only held, never spent; the page names what is still missing.
 - **Puzzle `ruins-puzzle`** (`clue-order`, five things, six clues with exactly one solution, 25 coins / 50 XP): put the jade idol, stone mask, sun key, serpent statue and water bowl in order from the clues.
   The browser gets the things (sorted by key), the clue sentences and the hint; the order is never stored or sent.
-- **Main quest `open-the-temple`** (70 coins / 140 XP, `requiresQuestKey: follow-the-clues`): `temple-glyphs` (`pair-match`, 20 coins) then `temple-maze` (`route-plan` 7 x 7, 25 coins), chained.
+- **Main quest `open-the-temple`** (110 coins / 140 XP, `requiresQuestKey: follow-the-clues`): `temple-glyphs` (`pair-match`, 20 coins) then `temple-maze` (`route-plan` 7 x 7, 25 coins), chained.
   A temple step cannot be solved before the clue quest is finished or out of order (the locked-quest rule from ADR 0020).
 - **Side mission `jungle-explorers`** (20 coins / 30 XP): complete two routines. Optional.
-- Chapter reward 150 coins / 300 XP / 1 map fragment; both main quests complete it. The child's fifth map fragment arrives with the claim, which is what Treasure Island needs
-  (plus the chapter): it opens as an empty placeholder.
+- Chapter reward 200 coins / 300 XP / 1 map fragment; both main quests complete it. The child's fifth map fragment arrives with the claim. Achievements Clue Reader (ruins puzzle) and Temple Explorer (maze) pay 50 coins each.
+  After the claim a child holds **1,100 coins** (minimum path, explorer and voyager bought), enough for the 1,000-coin legendary ship that Treasure Island needs.
 - Art is placeholder SVG (`jade-idol`, `stone-mask`, `sun-key`, the jungle scene) through the manifest.
+
+## Treasure Island (chapter 6, ADR 0022)
+
+Unlock: Whispering Jungle completed, **5 map fragments** (the fifth arrives with the jungle reward claim) **and one `ship-legendary`** (tier 5, the best ship; 1,000 coins, sold once the jungle is completed,
+needs no other ship). Buying it unlocks the island in the same purchase; the map's locked screen names what is missing. Children who had the placeholder unlocked keep it without the ship.
+
+Locations: Quest Board, Dig Site (stage 1, needs 5 map fragments held), Chest Cave (stage 2), Trap Tunnel (stage 3), Lookout (decorative).
+
+- **Main quest `find-the-treasure`** (100 coins / 200 XP): `dig-deep` (6 approved activities of any category), then three chained puzzle stages: `treasure-lock` (`sequence-match`, 30 coins; the hint
+  recites the whole pattern), `treasure-runes` (`clue-order`, five runes, six clues, 30 coins) and `treasure-traps` (`route-plan` 8 x 8, 40 coins). No cost; nothing is spent.
+- **Finale reward** (chapter reward): **1,000 coins, 2,000 XP, the sixth map fragment, `blackbeards-treasure`** (LEGENDARY collectible) **and `cosmetic-blackbeards-flag`** (wearable in the new crew-camp `flag` slot,
+  not for sale). Achievement **Legend of Blackbeard Bay** (200 XP) for completing the chapter.
+- **Campaign complete:** when every chapter is COMPLETED the map shows an "Adventure complete!" card (display only, not stored) and the child's parents get one notification, "{display name} finished
+  {adventure title}!" (`ADVENTURE_COMPLETED`, deduplicated per child and adventure).
 
 ## Economy
 
@@ -124,7 +137,7 @@ Locations: Quest Board (artifact quest), Ancient Ruins (puzzle, needs all three 
 - Level thresholds (XP): 100, 250, 500, 900, 1400, 2000, 2800, 3800, 5000.
 - Items: resources (`supply-crate`, `compass-feather`, `salvage-plank`, `rope-coil`, `chart-piece`), collectibles (`map-fragment` max 6, `magic-compass`, `kraken-tooth`, the artifacts `jade-idol`, `stone-mask`, `sun-key`,
   `gold-doubloon` display-only), ships (`ship-starter` granted at start; explorer 150c, voyager 400c,
-  captain 800c, legendary 1500c, each gated by a chapter), upgrades (`upgrade-patched-sail` 40c,
+  captain 800c, legendary 1000c, each gated by a chapter), upgrades (`upgrade-patched-sail` 40c,
   `upgrade-parrot-perch` 90c, `upgrade-brass-cannon` 200c), cosmetics (`cosmetic-captain-hat` 60c).
   Purchases go through `purchaseItem` (idempotent, never overdraws). The child **Supply shop** (`/child/supplies`) lists every item with a
   `costCoins`, with states _available_, _can't afford_, _locked_ (ship tier / required item / chapter) and _already have the maximum_; the same

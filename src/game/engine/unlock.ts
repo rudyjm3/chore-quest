@@ -57,3 +57,13 @@ export function levelForXp(xp: number, thresholds: number[]): number {
   }
   return level;
 }
+
+/**
+ * Has the child finished the whole adventure? True when it has chapters and every one is COMPLETED (ADR 0022). A
+ * chapter that is still a placeholder can never be completed, so an adventure cannot finish while any chapter is unbuilt.
+ */
+export function adventureFinished(
+  chapterStatuses: ReadonlyArray<ChapterProgressStatus | undefined>,
+): boolean {
+  return chapterStatuses.length > 0 && chapterStatuses.every((status) => status === "COMPLETED");
+}

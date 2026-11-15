@@ -493,3 +493,31 @@ Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
 - Treasure Island untouched. Out of scope and untouched: real email provider, photos, `NOTIFICATION_RETENTION_DAYS`, Phase 6 items.
 
 Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+
+## Phase 5, slice 4: Treasure Island (the finale)
+
+**What changed**
+
+- ADR 0022 (committed before the finale implementation): economy rebalance, the unlock, the finale design, the extra rewards and campaign completion.
+- **Economy (measured, asserted):** the legendary ship was 1,500 coins against about 700 after the jungle (800 short, and the finale's own 1,000 arrives only after it unlocks). Now the ship costs **1,000** and the reef and jungle pay **+400**: reef chapter reward 125 to 175, Kraken quest 60 to 100, jungle chapter reward 150 to 200, `follow-the-clues` 50 to 70, `open-the-temple` 70 to 110, and four new puzzle achievements (Reef Navigator, Kraken Slayer, Clue Reader, Temple Explorer, 50 coins each). Result: **520** after the reef and **1,100** after the jungle reward, so the ship is affordable with 100 to spare; a test buys it.
+- **Treasure Island (PLAYABLE):** unlock = jungle completed + 5 map fragments + `ship-legendary`; `find-the-treasure` = a 6-chore dig, then `treasure-lock` (sequence, hint recites the pattern), `treasure-runes` (clue-order) and `treasure-traps` (8 x 8 route), chained. The dig site needs the five map pieces held. No new puzzle type, objective type or gate key; nothing is spent.
+- **Finale rewards:** 1,000 coins, 2,000 XP, the sixth fragment, `blackbeards-treasure` and `cosmetic-blackbeards-flag` (new crew-camp `flag` slot, theme data only), achievement Legend of Blackbeard Bay.
+- **Campaign completion:** pure `adventureFinished`, `campaignComplete` in the adventure state and a map card; one `ADVENTURE_COMPLETED` parent notification per child and adventure written in the transaction that completes the last chapter (deduplicated; display name and adventure title only). **One migration** adds the enum value; no table changed.
+
+**Test counts** (`pnpm check`): unit **212** (was 204), integration **265** (was 250). E2E **69 passed, 16 skipped** (mobile, by design; was 66 / 15) with the new `phase5-island.spec.ts`. `pnpm format:check` clean.
+
+**Mutation checks** (by hand, restored): removing `lockChildRow` from `submitPuzzleAnswer` fails the parallel last-stage test and the lock race; skipping the completion notification fails three tests.
+
+**Issues met**
+
+- The jungle e2e (and two integration assertions) still expected Treasure Island to open straight after the jungle; they now expect it to wait for the legendary ship. The first full e2e run caught the spec.
+- A first draft of the notification helper used `Promise.all` on the transaction client, which the project forbids; it now reads one query after the other.
+- A stopped PostgreSQL once made a test run fail to connect; restarting it fixed it (nothing in the code).
+
+**Known limitations / left out**
+
+- The campaign-complete card is permanent while the campaign is complete, not shown once (that needs a stored flag). Only the starter ship has scene art. Placeholder art throughout; attempt limits remain deferred to Phase 6.
+- Children who already claimed earlier rewards keep the old amounts; the four new achievements reach only children who solve those puzzles afterwards.
+- Out of scope and untouched: real email provider, photos on submissions, `NOTIFICATION_RETENTION_DAYS`, Phase 6 items.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).

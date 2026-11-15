@@ -161,7 +161,7 @@ describe("clue-order puzzles in the pirate theme", () => {
     .filter((p) => p.type === "clue-order");
 
   it("every one has exactly one solution that its sentences describe, and a view without it", () => {
-    expect(puzzles.map((p) => p.key)).toEqual(["ruins-puzzle"]);
+    expect(puzzles.map((p) => p.key)).toEqual(["ruins-puzzle", "treasure-runes"]);
     for (const puzzle of puzzles) {
       const board = verifier.parseConfig(puzzle.config.data);
       const solution = clueOrderSolution(board);

@@ -23,7 +23,7 @@ describe("Skull Reef theme data", () => {
     ]);
     // The chapter reward is the configured one.
     expect(reef.config.rewards).toEqual({
-      coins: 125,
+      coins: 175,
       xp: 250,
       items: [{ itemKey: "map-fragment", quantity: 1 }],
     });
@@ -112,14 +112,6 @@ describe("Skull Reef theme data", () => {
     )) {
       expect(ids.has(item.iconKey ?? ""), item.key).toBe(true);
     }
-  });
-
-  it("Treasure Island stays an empty placeholder", () => {
-    const island = pirateAdventure.chapters.find((c) => c.key === "treasure-island")!;
-    expect(island.status).toBe("PLACEHOLDER");
-    expect(island.quests).toEqual([]);
-    expect(island.puzzles).toEqual([]);
-    expect(island.config.locations).toEqual([]);
   });
 });
 

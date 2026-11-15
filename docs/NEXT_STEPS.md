@@ -1,7 +1,15 @@
 # Next steps and not-yet-done items
 
-Single list of what was deliberately left out of merged work, so it is not missed. Updated after Phase 5 slice 3 (Whispering Jungle).
+Single list of what was deliberately left out of merged work, so it is not missed. Updated after Phase 5 slice 4 (Treasure Island). Phase 5 content is complete.
 Status key: ⬜ not started · 🟡 partial · ⛔ blocked on a decision or an external account.
+
+## Done in Phase 5 slice 4 (Treasure Island)
+
+Treasure Island is playable (placeholder art, ADR 0022), so every chapter of the pirate campaign now exists. It needs the jungle completed, five map pieces and the legendary ship
+(tier 5, now 1,000 coins). To make the ship reachable, the reef and the jungle pay 400 coins more (measured: 520 after the reef, 1,100 after the jungle with only the explorer and voyager bought).
+The finale is a dig (6 chores, the dig site needs the map pieces held) and three chained guards (sequence, clue-order, 8 x 8 route), paying 1,000 coins, 2,000 XP, the sixth map fragment,
+Blackbeard's Treasure and a wearable flag (new crew-camp slot). Finishing the last chapter shows an "Adventure complete!" card on the map and notifies the parents once (new
+`ADVENTURE_COMPLETED` notification kind, one small migration).
 
 ## Done in Phase 5 slice 3 (Whispering Jungle)
 
@@ -67,9 +75,13 @@ The Home Port slice before it: quest board, crew camp, lighthouse hints, Pip dia
 2. **Phase 5 — Complete Pirate Campaign:** Shipwreck Cove ✅, Skull Reef ✅. Remaining: Treasure Island (final treasure and campaign completion), and any further puzzle types in `src/game/puzzles`.
 3. **Phase 6 — MVP testing and launch preparation:** full parent/child e2e journeys and an approval-pipeline load test; security review (CSP, edge rate limiting, dependency audit); WCAG 2.2 AA audit; mobile performance budget and PWA; privacy/COPPA legal review with retention/deletion flows and parental-consent copy (the photo decision belongs here); pilot with a few families; Vercel + Supabase production setup. The real email provider must be in place before the pilot.
 
-Suggested immediate order: Treasure Island (the final chapter: the map fragments come together, campaign completion rewards). Decide first what the final reward is and whether it needs
-the captain or legendary ship; the economy would then need rebalancing (the captain is 470 coins out of reach after the reef; see ADR 0021). If a real cost is ever wanted (spending items to win a challenge) it needs
-its own ADR for an inventory debit path first.
+Suggested immediate order: **Phase 6 (MVP testing and launch preparation)**, starting with the items that gate a pilot: the real email provider, the Phase 6 security review (CSP, edge rate limiting
+including puzzle attempt limits), the WCAG 2.2 AA audit of both shells and the privacy/COPPA review with the photo decision. Optional content follow-ups before or alongside: real artwork and audio through the
+manifests, a shown-once campaign-complete screen (needs a stored "seen" flag), a ship-scene image for the higher ship tiers, and post-game content. If a real cost is ever wanted (spending items to win a challenge) it
+needs its own ADR for an inventory debit path first.
+
+Known limitations from slice 4: the campaign-complete card stays on the map while the campaign is complete (not shown once, no stored flag); only the starter ship has scene art; the route board still speaks of a ship
+and a sea chart on Treasure Island; legendary-ship coins were tuned on the minimum chore path, so a household that buys cosmetics along the way will take extra chores; failed attempts remain unbounded rows (Phase 6).
 
 Known limitations from slice 3: an artifact appears on the first chore of its search (the engine grants per unit of progress and clamps at the item cap); clue sentences are checked by hand
 against their rules (only the rule is enforced); the clue and route UIs are tap/button based; the route board still speaks of a ship and a sea chart inside the jungle; failed attempts remain unbounded rows (Phase 6).
