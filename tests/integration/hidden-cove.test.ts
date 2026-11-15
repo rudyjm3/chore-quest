@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import type { Prisma } from "@/generated/prisma/client";
+
 import { lockChildRow } from "@/lib/db/prisma";
 import { startAdventure } from "@/server/services/adventure.service";
 import { grantItem, inventoryByItemKey } from "@/server/services/inventory.service";
@@ -97,6 +99,41 @@ describe("hidden cove", () => {
     const { ctx } = await createChildFixture(db, family.id, "New");
     expect((await getLocationStatus(db, ctx, COVE)).status).toBe("not-started");
     await expect(visitLocation(db, ctx, COVE)).rejects.toMatchObject({ code: "INVALID_STATE" });
+  });
+});
+
+describe("hidden cove quantity gate (ADR 0019)", () => {
+  it("requiresItemQuantity means the child must hold at least that many", async () => {
+    const chapter = await db.adventureChapter.findFirstOrThrow({ where: { key: "home-port" } });
+    const original = chapter.config as { locations: Array<Record<string, unknown>> };
+    const patched = {
+      ...original,
+      locations: original.locations.map((l) =>
+        l.key === "hidden-cove" ? { ...l, requiresItemQuantity: 2 } : l,
+      ),
+    };
+    await db.adventureChapter.update({
+      where: { id: chapter.id },
+      data: { config: patched as Prisma.InputJsonObject },
+    });
+    try {
+      const s = await setup(true); // holds one fragment
+      expect(await getLocationStatus(db, s.ctx, COVE)).toMatchObject({
+        status: "locked",
+        requiresItemQuantity: 2,
+      });
+      await expect(visitLocation(db, s.ctx, COVE)).rejects.toMatchObject({ code: "INVALID_STATE" });
+      await db.childInventoryItem.updateMany({
+        where: { childId: s.child.id, item: { key: "map-fragment" } },
+        data: { quantity: 2 },
+      });
+      expect((await visitLocation(db, s.ctx, COVE)).granted).toBe(true);
+    } finally {
+      await db.adventureChapter.update({
+        where: { id: chapter.id },
+        data: { config: original as Prisma.InputJsonObject },
+      });
+    }
   });
 });
 
