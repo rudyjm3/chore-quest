@@ -94,6 +94,16 @@ describe("Skull Reef theme data", () => {
     }
   });
 
+  it("a mandatory sequence stage can be solved from its hint: the hint names every step, in order", () => {
+    // Regression for a review finding: a hint that named only the first symbol left 4^5 blind guesses.
+    const puzzle = reef.puzzles.find((p) => p.key === "kraken-tentacles")!;
+    const data = puzzle.config.data as { symbols: string[]; sequence: string[]; hint: string };
+    const mentioned = [...data.hint.matchAll(new RegExp(data.symbols.join("|"), "gi"))].map((m) =>
+      data.symbols.find((s) => s.toLowerCase() === m[0].toLowerCase()),
+    );
+    expect(mentioned).toEqual(data.sequence);
+  });
+
   it("every item and scene it uses has a manifest entry", () => {
     const ids = new Set(pirateAssetManifest.assets.map((a) => a.id));
     expect(ids.has("scene.skull-reef")).toBe(true);

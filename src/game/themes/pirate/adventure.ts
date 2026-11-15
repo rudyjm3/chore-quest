@@ -571,7 +571,7 @@ const definition: AdventureDefinitionInput = {
             data: {
               symbols: ["Coil", "Slam", "Sweep", "Snap"],
               sequence: ["Coil", "Sweep", "Slam", "Sweep", "Snap"],
-              hint: "Pip squawks: the Kraken always starts by coiling up!",
+              hint: "Pip squawks from the rocks: Coil! Sweep! Slam! Sweep! Snap! Watch the tentacles, then tap them in the same order.",
             },
           },
         },
