@@ -66,6 +66,7 @@ the pirate wording lives in `src/game/themes/pirate/achievements.ts`.
 
 - `chapterConfig.hint` — spoiler-free nudge shown by the lighthouse (`lighthouseHint`: hint of the furthest playable chapter, else the next locked one).
 - `chapterConfig.locations[].requiresItemQuantity` (integer ≥ 1, default 1) — with `requiresItemKey`, the child must currently hold at least this many. Held, never consumed (ADR 0019). Enforced for `reward` locations by `visitLocation` and for `puzzle` locations by `submitPuzzleAnswer` (pure helpers in `src/game/engine/location-gate.ts`); `getPuzzleForChild` returns `gate: { itemKey, quantity, met }` for display.
+- `chapterConfig.locations[].requiresItems` (array of `{ itemKey, quantity ≥ 1 }`, default empty, ADR 0021) — more items the child must hold **at the same time**; together with `requiresItemKey`/`requiresItemQuantity` every one must be satisfied (the largest quantity wins when an item is listed twice, and across several locations that open the same puzzle). Held, never consumed. Enforced by the server in `submitPuzzleAnswer` and `visitLocation`.
 - `chapterConfig.locations[].requiresItemKey` and `.reward` — a place the child must hold an item for, with a one-time item reward on first visit (`location.service`, ADR 0014). Item rewards only; the key is per child and place.
 - Item `config.slot` — the slot a wearable item fits (`head`, `sail`, `deck`, ...). The crew camp stores `{ equipped: { slot: itemKey } }` in `child_adventure_progress.state` (ADR 0013); slots are an open vocabulary defined by item data.
 - NPC dialogue (`npcDialogueSchema`, `src/game/schemas/dialogue.ts`): lines per situation (`greeting`, `quest-complete`, `low-supplies`) plus `lowSupplies: { itemKey, below }`. `selectLine` is pure and picks by situation and a day seed; no free text and no child data.
@@ -92,6 +93,11 @@ answer; the server parses the stored config and verifies. Completed attempts are
   cells, a start equal to the goal, a hazard on either, and a board with no safe route (breadth-first search at parse time). Client view: the whole board (`width`, `height`,
   `start`, `goal`, `reefs` sorted row by row, `hint`): it is a planning puzzle, so hazards are visible, and the answer is the child's route, never in the view. The browser simulates moves
   with the pure `stepOnBoard` helper only to refuse impossible steps politely; the server re-verifies the whole route.
+
+- `clue-order` (`{ items: [{key,label}], clues: [{ rule, a, b | slot, text }], hint }`, 3 to 6 items, ADR 0021): put the items in numbered places using clues. Rules: `left-of`, `next-to`,
+  `not-next-to` (two items), `in-slot`, `not-in-slot` (one item and a place from 1). Answer `{ order: string[] }` (item keys, place 1 first). No answer is stored: `parseConfig` enumerates every
+  ordering (at most 720) and **rejects a config with zero or several solutions**, so "satisfies every clue" is "is the answer". It also rejects unknown items or places, a clue comparing an item with itself, duplicate
+  keys, and keys whose sorted order is the solution. Client view: `items` (sorted by key), `slots`, `clues` (the sentences only) and `hint`. The sentence of a clue is theme data and is checked by hand against its rule.
 
 The submit action sends `sequence-match` answers as repeated `sequence` fields and other types as one JSON `answerJson` field (2000 characters at most);
 the verifier validates the shape.
