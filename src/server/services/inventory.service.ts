@@ -12,6 +12,7 @@ import {
   type ShopContext,
 } from "@/features/shop/shop-state";
 
+import { unlockEligibleChapters } from "./chapter-unlock.service";
 import { postLedgerEntry } from "./reward.service";
 
 export interface GrantItemInput {
@@ -152,6 +153,14 @@ export async function purchaseItem(
       sourceType: "PURCHASE",
       sourceKey: sourceKeys.purchaseItem(params.idempotencyKey, item.key),
     });
+    // A purchase can satisfy a chapter's item requirement (the explorer ship, ADR 0019): re-evaluate in this transaction.
+    if (item.adventureId) {
+      await unlockEligibleChapters(tx, {
+        familyId: params.familyId,
+        childId: params.childId,
+        adventureId: item.adventureId,
+      });
+    }
     return { item, debit, grant, replayed: false as const };
   });
 }

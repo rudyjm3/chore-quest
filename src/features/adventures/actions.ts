@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { clearChildSessionCookie, setChildSessionCookie } from "@/lib/auth/child-session-cookie";
 import { prisma } from "@/lib/db/prisma";
-import { runAction, type ActionResult } from "@/lib/errors";
+import { AppError, runAction, type ActionResult } from "@/lib/errors";
 import {
   claimChapterRewardSchema,
   equipCosmeticSchema,
@@ -97,14 +97,28 @@ export async function claimChapterRewardAction(
   });
 }
 
+function parseAnswerJson(text: string): unknown {
+  if (text.length > 2000) throw AppError.validation("That answer is too long");
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw AppError.validation("That answer could not be read");
+  }
+}
+
 export async function submitPuzzleAction(_prev: ActionResult<unknown> | null, formData: FormData) {
   return runAction(async () => {
     const ctx = await requireChildContext();
     const raw = formToObject(formData);
-    const sequence = formData.getAll("sequence").map(String);
+    // sequence-match sends repeated `sequence` fields; other puzzle types send one JSON `answer` (size
+    // limited here, shape validated by the verifier). The browser never decides whether it is right.
+    const answerJson = formData.get("answerJson");
     const input = parseOrThrow(submitPuzzleSchema, {
       puzzleId: raw.puzzleId,
-      answer: { sequence },
+      answer:
+        typeof answerJson === "string"
+          ? parseAnswerJson(answerJson)
+          : { sequence: formData.getAll("sequence").map(String) },
     });
     const result = await submitPuzzleAnswer(prisma, ctx, input.puzzleId, input.answer);
     revalidatePath("/child", "layout");

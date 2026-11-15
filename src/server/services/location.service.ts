@@ -12,7 +12,7 @@ type Db = Prisma.TransactionClient | DbClient;
 
 export type LocationStatus =
   | { status: "not-started" }
-  | { status: "locked"; requiresItemKey: string }
+  | { status: "locked"; requiresItemKey: string; requiresItemQuantity: number }
   | { status: "available" }
   | { status: "found" };
 
@@ -65,17 +65,22 @@ async function statusFor(db: Db, ctx: ChildContext, chapterKey: string, r: Resol
   if (found) return { status: "found" } as const satisfies LocationStatus;
   const need = r.location.requiresItemKey;
   if (need) {
+    const quantity = r.location.requiresItemQuantity;
     const owned = await db.childInventoryItem.findFirst({
       where: {
         childId: ctx.childId,
         familyId: ctx.familyId,
-        quantity: { gt: 0 },
+        quantity: { gte: quantity },
         item: { key: need },
       },
       select: { id: true },
     });
     if (!owned)
-      return { status: "locked", requiresItemKey: need } as const satisfies LocationStatus;
+      return {
+        status: "locked",
+        requiresItemKey: need,
+        requiresItemQuantity: quantity,
+      } as const satisfies LocationStatus;
   }
   return { status: "available" } as const satisfies LocationStatus;
 }

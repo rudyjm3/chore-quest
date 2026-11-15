@@ -3,13 +3,13 @@ import type { ActivitySourceType, TaskCategory } from "@/generated/prisma/enums"
 import {
   advanceObjective,
   chapterComplete,
-  chapterUnlocked,
   completionMatchesObjective,
   isObjectiveComplete,
   levelForXp,
   missingRequirements,
   parseObjectiveConfig,
-  type UnlockSnapshot,
+  itemGateMet,
+  puzzleItemGate,
 } from "@/game/engine";
 import { getPuzzleVerifier } from "@/game/puzzles";
 import {
@@ -24,6 +24,13 @@ import { AppError } from "@/lib/errors";
 import { sourceKeys } from "@/lib/utils/source-keys";
 import type { ChildContext } from "@/server/policies/context";
 
+import {
+  activateQuest,
+  buildSnapshot,
+  ensureChapterProgress,
+  ensureChildProgress,
+  unlockEligibleChapters,
+} from "./chapter-unlock.service";
 import { grantItem, inventoryByItemKey } from "./inventory.service";
 import { getWallets, postLedgerEntry } from "./reward.service";
 
@@ -114,6 +121,10 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
   const inventory = await inventoryByItemKey(db, ctx.childId);
   const wallets = await getWallets(db, ctx.childId);
   const adventureConfig = adventureConfigSchema.parse(adventure.config);
+  const items = await db.itemDefinition.findMany({
+    where: { adventureId: adventure.id, isActive: true },
+    select: { key: true, name: true },
+  });
 
   const chapterProgressById = new Map(progress?.chapters.map((c) => [c.chapterId, c]) ?? []);
   const questProgressById = new Map(questProgress.map((q) => [q.questId, q]));
@@ -135,6 +146,8 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
     wallets,
     level: levelForXp(wallets.XP, adventureConfig.levelThresholds),
     inventory,
+    /** Display names for item keys (unlock hints, location gates). */
+    itemNames: Object.fromEntries(items.map((i) => [i.key, i.name])),
     chapters: adventure.chapters.map((chapter) => {
       const config = chapterConfigSchema.parse(chapter.config);
       const cp = chapterProgressById.get(chapter.id);
@@ -214,6 +227,8 @@ export interface CompletionForQuests {
 
 /** Feed one verified completion into every ACTIVE quest objective that accepts it. */
 export async function applyCompletionToQuests(tx: Tx, completion: CompletionForQuests) {
+  // Children whose chapters gained quests after they unlocked them get their rows first (ADR 0019).
+  await ensureChildProgress(tx, { familyId: completion.familyId, childId: completion.childId });
   const activeQuests = await tx.questProgress.findMany({
     where: { childId: completion.childId, status: "ACTIVE" },
     include: {
@@ -338,41 +353,6 @@ export async function evaluateQuestCompletion(tx: Tx, questProgressId: string) {
   return true;
 }
 
-async function activateQuest(
-  tx: Tx,
-  params: { familyId: string; childId: string; quest: { id: string; chapterId: string } },
-) {
-  const objectives = await tx.questObjective.findMany({ where: { questId: params.quest.id } });
-  const existing = await tx.questProgress.findUnique({
-    where: { childId_questId: { childId: params.childId, questId: params.quest.id } },
-  });
-  const qp =
-    existing ??
-    (await tx.questProgress.create({
-      data: {
-        familyId: params.familyId,
-        childId: params.childId,
-        questId: params.quest.id,
-        status: "LOCKED",
-      },
-    }));
-  if (qp.status === "LOCKED") {
-    await tx.questProgress.update({
-      where: { id: qp.id },
-      data: { status: "ACTIVE", startedAt: new Date() },
-    });
-  }
-  await tx.objectiveProgress.createMany({
-    data: objectives.map((o) => ({
-      questProgressId: qp.id,
-      objectiveId: o.id,
-      targetCount: o.targetCount,
-    })),
-    skipDuplicates: true,
-  });
-  return qp;
-}
-
 /** Mark the chapter COMPLETED when its required quests are done, then try to unlock the next ones. */
 export async function evaluateChapterCompletion(
   tx: Tx,
@@ -419,57 +399,6 @@ export async function evaluateChapterCompletion(
     adventureId: chapter.adventureId,
   });
   return true;
-}
-
-/** Evaluate unlock rules for every LOCKED chapter; unlock and activate quests when satisfied. */
-export async function unlockEligibleChapters(
-  tx: Tx,
-  params: { familyId: string; childId: string; adventureId: string },
-) {
-  const chapters = await tx.adventureChapter.findMany({
-    where: { adventureId: params.adventureId },
-    orderBy: { sortOrder: "asc" },
-    include: { quests: true },
-  });
-  const progress = await tx.childAdventureProgress.findUnique({
-    where: { childId_adventureId: { childId: params.childId, adventureId: params.adventureId } },
-    include: { chapters: true },
-  });
-  if (!progress) return [];
-  const questProgress = await tx.questProgress.findMany({
-    where: { childId: params.childId, quest: { chapter: { adventureId: params.adventureId } } },
-    include: { objectives: true },
-  });
-  const inventory = await inventoryByItemKey(tx, params.childId);
-  const chapterProgressById = new Map(progress.chapters.map((c) => [c.chapterId, c]));
-  const questProgressById = new Map(questProgress.map((q) => [q.questId, q]));
-  const snapshot = buildSnapshot(chapters, chapterProgressById, questProgressById, inventory);
-
-  const unlocked: string[] = [];
-  for (const chapter of chapters) {
-    const cp = chapterProgressById.get(chapter.id);
-    if (!cp || cp.status !== "LOCKED") continue;
-    const config = chapterConfigSchema.parse(chapter.config);
-    if (!chapterUnlocked(config.unlock.requires, snapshot)) continue;
-
-    await tx.childChapterProgress.update({
-      where: { id: cp.id },
-      data: { status: "UNLOCKED", unlockedAt: new Date() },
-    });
-    snapshot.chapterStatusByKey[chapter.key] = "UNLOCKED";
-    for (const quest of chapter.quests) {
-      const questConfig = questConfigSchema.parse(quest.config);
-      if (!questConfig.requiresQuestKey) {
-        await activateQuest(tx, { familyId: params.familyId, childId: params.childId, quest });
-      }
-    }
-    await tx.childAdventureProgress.update({
-      where: { id: progress.id },
-      data: { currentChapterId: chapter.id },
-    });
-    unlocked.push(chapter.key);
-  }
-  return unlocked;
 }
 
 /** Child claims a completed chapter's reward bundle. Idempotent via rewardClaimedAt + source keys. */
@@ -523,26 +452,41 @@ export async function getPuzzleForChild(
       key: params.puzzleKey,
       chapter: { key: params.chapterKey, adventure: { key: params.adventureKey } },
     },
+    include: { chapter: { select: { config: true } } },
   });
   if (!puzzle) throw AppError.notFound("Puzzle");
-  const [cp, solved] = await Promise.all([
-    db.childChapterProgress.findUnique({
-      where: { childId_chapterId: { childId: ctx.childId, chapterId: puzzle.chapterId } },
+  const [cp, solved, inventory] = await Promise.all([
+    db.childChapterProgress.findFirst({
+      where: { childId: ctx.childId, familyId: ctx.familyId, chapterId: puzzle.chapterId },
     }),
     db.puzzleAttempt.findFirst({
-      where: { childId: ctx.childId, puzzleId: puzzle.id, status: "COMPLETED" },
+      where: {
+        childId: ctx.childId,
+        familyId: ctx.familyId,
+        puzzleId: puzzle.id,
+        status: "COMPLETED",
+      },
       select: { id: true },
     }),
+    inventoryByItemKey(db, ctx.childId),
   ]);
   if (!cp || cp.status === "LOCKED") throw AppError.forbidden("This puzzle is not available yet");
   const config = puzzleConfigSchema.parse(puzzle.config);
   const verifier = getPuzzleVerifier(puzzle.type);
+  const gate = puzzleItemGate(
+    chapterConfigSchema.parse(puzzle.chapter.config).locations,
+    puzzle.key,
+  );
   return {
     id: puzzle.id,
     key: puzzle.key,
     title: puzzle.title,
     type: puzzle.type,
     solved: Boolean(solved),
+    /** The item the place needs the child to hold (display only; submit re-checks under the lock). */
+    gate: gate
+      ? { itemKey: gate.itemKey, quantity: gate.quantity, met: itemGateMet(gate, inventory) }
+      : null,
     view: verifier.toClientView(verifier.parseConfig(config.data)),
   };
 }
@@ -574,6 +518,24 @@ export async function submitPuzzleAnswer(
         alreadyCompleted: true as const,
         feedback: "Already solved!",
       };
+
+    // The place may need the child to hold enough of an item (never consumed, ADR 0019).
+    const chapterConfig = chapterConfigSchema.parse(puzzle.chapter.config);
+    const itemGate = puzzleItemGate(chapterConfig.locations, puzzle.key);
+    if (itemGate && !itemGateMet(itemGate, await inventoryByItemKey(tx, ctx.childId))) {
+      const named = await tx.itemDefinition.findUnique({
+        where: { key: itemGate.itemKey },
+        select: { name: true },
+      });
+      throw AppError.invalidState(
+        `You need ${itemGate.quantity} × ${named?.name ?? "more items"} to try this`,
+      );
+    }
+    await ensureChapterProgress(tx, {
+      familyId: ctx.familyId,
+      childId: ctx.childId,
+      adventureId: puzzle.chapter.adventureId,
+    });
 
     // The puzzle objective must be reachable (prerequisite objectives done).
     const gate = await puzzleObjectiveGate(tx, ctx.childId, puzzle.chapterId, puzzle.key);
@@ -816,27 +778,4 @@ async function awardAchievementsForPuzzle(
       });
     }
   }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function buildSnapshot(
-  chapters: Array<{ id: string; key: string; quests: Array<{ id: string; key: string }> }>,
-  chapterProgressById: Map<string, { status: UnlockSnapshot["chapterStatusByKey"][string] }>,
-  questProgressById: Map<string, { status: string }>,
-  inventory: Record<string, number>,
-): UnlockSnapshot {
-  const chapterStatusByKey: UnlockSnapshot["chapterStatusByKey"] = {};
-  const completedQuestKeys = new Set<string>();
-  for (const chapter of chapters) {
-    chapterStatusByKey[chapter.key] = chapterProgressById.get(chapter.id)?.status;
-    for (const quest of chapter.quests) {
-      const status = questProgressById.get(quest.id)?.status;
-      if (status === "COMPLETED" || status === "CLAIMED")
-        completedQuestKeys.add(`${chapter.key}/${quest.key}`);
-    }
-  }
-  return { chapterStatusByKey, inventoryByItemKey: inventory, completedQuestKeys };
 }

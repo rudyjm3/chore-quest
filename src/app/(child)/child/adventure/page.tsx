@@ -76,7 +76,7 @@ export default async function AdventurePage() {
                 {c.missingRequirements
                   .map((r) =>
                     r.type === "ITEM"
-                      ? `Need ${r.quantity} ${r.itemKey.replaceAll("-", " ")}`
+                      ? `Need ${r.quantity > 1 ? `${r.quantity} × ` : ""}${state.itemNames[r.itemKey] ?? r.itemKey.replaceAll("-", " ")}`
                       : r.type === "CHAPTER_COMPLETED"
                         ? `Finish ${r.chapterKey.replaceAll("-", " ")}`
                         : "Locked",
