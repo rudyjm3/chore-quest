@@ -1,9 +1,14 @@
-import { pairMatchClientViewSchema, sequenceMatchClientViewSchema } from "@/game/puzzles";
+import {
+  pairMatchClientViewSchema,
+  routePlanClientViewSchema,
+  sequenceMatchClientViewSchema,
+} from "@/game/puzzles";
 import { prisma } from "@/lib/db/prisma";
 import type { ChildContext } from "@/server/policies/context";
 import { getPuzzleForChild } from "@/server/services/adventure.service";
 
 import { PairPuzzle } from "./pair-puzzle";
+import { RoutePuzzle } from "./route-puzzle";
 import { SequencePuzzle } from "./sequence-puzzle";
 
 /**
@@ -64,6 +69,16 @@ export async function PuzzlePanel({
         parts={view.parts}
         tools={view.tools}
         hint={view.hint}
+        solved={puzzle.solved}
+      />
+    );
+  }
+  if (puzzle.type === "route-plan") {
+    return (
+      <RoutePuzzle
+        puzzleId={puzzle.id}
+        title={puzzle.title}
+        board={routePlanClientViewSchema.parse(puzzle.view)}
         solved={puzzle.solved}
       />
     );

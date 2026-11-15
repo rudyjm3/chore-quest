@@ -86,8 +86,23 @@ answer; the server parses the stored config and verifies. Completed attempts are
   `{ pairs: { partKey: toolKey } }`; anything incomplete, duplicated, unknown or malformed is simply "not correct". `parseConfig` rejects a config whose parts, in
   the listed order, would line up with the sorted tools (that order would spell out the answer).
 
+- `route-plan` (`{ width, height, start: {x,y}, goal: {x,y}, reefs: [{x,y}], hint }`, 3 to 8 cells a side, ADR 0020): plan a route of moves across a small grid from the start to
+  the goal without leaving the board or touching a hazard. Answer `{ moves: ("up"|"down"|"left"|"right")[] }` (at most 64). The verifier applies the moves by rule
+  (in bounds, no reef, ends on the goal), so **any safe route is accepted**; revisiting a cell is legal. No route is stored. `parseConfig` rejects out-of-bounds or duplicate
+  cells, a start equal to the goal, a hazard on either, and a board with no safe route (breadth-first search at parse time). Client view: the whole board (`width`, `height`,
+  `start`, `goal`, `reefs` sorted row by row, `hint`): it is a planning puzzle, so hazards are visible, and the answer is the child's route, never in the view. The browser simulates moves
+  with the pure `stepOnBoard` helper only to refuse impossible steps politely; the server re-verifies the whole route.
+
 The submit action sends `sequence-match` answers as repeated `sequence` fields and other types as one JSON `answerJson` field (2000 characters at most);
 the verifier validates the shape.
+
+## Chained quests and puzzle stages (ADR 0020)
+
+A multi-stage challenge needs no engine type: one quest with a `COMPLETE_PUZZLE` objective per stage, each with `requiresObjectiveKey` on the previous one, optionally behind
+another quest (`config.requiresQuestKey`, activated when that quest is claimed). Order is enforced on the server in `submitPuzzleAnswer` (`puzzleObjectiveGate`): a stage
+is refused (`invalidState`, no attempt row) while its prerequisite objective is open **or while its quest has not started or finished**. The second rule exists because a
+puzzle that belongs to no ACTIVE quest used to be playable "with no progress", which would have paid out and been marked solved for good while its objective stayed open.
+Puzzles that belong to no quest objective at all are still playable. Rewards for each stage, the quest and the chapter use the existing bundles; nothing is spent.
 
 ## Unlocking, ensure step and item gates (ADR 0019)
 

@@ -279,9 +279,9 @@ const definition: AdventureDefinitionInput = {
           title: "Salvage the Wreck",
           description:
             "Gather planks and rope from the wreck, then repair the ship. Planks come first from any approved chore; once you have enough, the next chores become rope.",
-          rewardCoins: 40,
-          rewardXp: 80,
-          config: { rewards: { coins: 40, xp: 80, items: [] } },
+          rewardCoins: 50,
+          rewardXp: 100,
+          config: { rewards: { coins: 50, xp: 100, items: [] } },
           objectives: [
             {
               key: "gather-planks",
@@ -336,7 +336,7 @@ const definition: AdventureDefinitionInput = {
           title: "Repair the Ship",
           type: "pair-match",
           config: {
-            rewards: { coins: 15, xp: 30, items: [] },
+            rewards: { coins: 25, xp: 50, items: [] },
             data: {
               parts: [
                 { key: "hull", label: "Leaky hull" },
@@ -371,18 +371,268 @@ const definition: AdventureDefinitionInput = {
       title: "Skull Reef",
       subtitle: "Navigate dangerous waters and overcome the Kraken",
       locationName: "Skull Reef",
-      status: "PLACEHOLDER",
+      description:
+        "Jagged rocks and a hungry Kraken guard the reef. Piece a sea chart together by finishing chores, plot a safe route through the rocks, then outwit the Kraken in three steps.",
+      status: "PLAYABLE",
       config: {
-        unlock: { requires: [{ type: "CHAPTER_COMPLETED", chapterKey: "shipwreck-cove" }] },
-        completion: { requiresQuestKeys: [] },
+        unlock: {
+          requires: [
+            { type: "CHAPTER_COMPLETED", chapterKey: "shipwreck-cove" },
+            { type: "ITEM", itemKey: "ship-voyager", quantity: 1 },
+          ],
+        },
+        completion: { requiresQuestKeys: ["navigate-the-reef", "defeat-the-kraken"] },
         rewards: { coins: 125, xp: 250, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 66, y: 40 },
-        hint: "Something spooky lies beyond the fog. Finish the cove first.",
+        hint: "Something spooky lies beyond the fog. Finish the cove, then sail there in the Voyager Ship from the supply shop.",
         sceneAssetKey: "scene.skull-reef",
-        locations: [],
+        locations: [
+          {
+            key: "reef-board",
+            name: "Quest Board",
+            kind: "quest-board",
+            position: { x: 20, y: 70 },
+            questKey: "navigate-the-reef",
+            description: "Chart pieces drift in with the tide. Every finished chore brings one.",
+          },
+          {
+            key: "chart-table",
+            name: "Reef Chart Table",
+            kind: "puzzle",
+            position: { x: 38, y: 55 },
+            puzzleKey: "reef-chart-puzzle",
+            description:
+              "You need five chart pieces in your hold to plan a route through the rocks.",
+            requiresItemKey: "chart-piece",
+            requiresItemQuantity: 5,
+          },
+          {
+            key: "kraken-watch",
+            name: "Kraken Watch",
+            kind: "quest-board",
+            position: { x: 72, y: 78 },
+            questKey: "defeat-the-kraken",
+            description: "Three steps to outwit the Kraken. Chart the reef first.",
+          },
+          {
+            key: "tentacle-rocks",
+            name: "Tentacle Rocks",
+            kind: "puzzle",
+            position: { x: 60, y: 30 },
+            puzzleKey: "kraken-tentacles",
+            description: "Step one: learn how the Kraken's tentacles move.",
+          },
+          {
+            key: "krakens-lair",
+            name: "Kraken's Lair",
+            kind: "puzzle",
+            position: { x: 80, y: 45 },
+            puzzleKey: "kraken-weak-points",
+            description: "Step two: find what stops each part of the Kraken.",
+          },
+          {
+            key: "whirlpool-gate",
+            name: "Whirlpool Gate",
+            kind: "puzzle",
+            position: { x: 48, y: 20 },
+            puzzleKey: "kraken-escape",
+            description: "Step three: steer the ship clear of the rocks and away.",
+          },
+          {
+            key: "coral-shallows",
+            name: "Coral Shallows",
+            kind: "quest-board",
+            position: { x: 12, y: 40 },
+            questKey: "reef-scavengers",
+          },
+          { key: "bone-wreck", name: "Bone Wreck", kind: "decorative", position: { x: 88, y: 80 } },
+        ],
       },
-      quests: [],
-      puzzles: [],
+      quests: [
+        {
+          key: "navigate-the-reef",
+          kind: "MAIN",
+          title: "Navigate the Reef",
+          description:
+            "Collect five pieces of sea chart from approved chores, then plan a safe route through the rocks.",
+          rewardCoins: 40,
+          rewardXp: 80,
+          config: { rewards: { coins: 40, xp: 80, items: [] } },
+          objectives: [
+            {
+              key: "collect-chart-pieces",
+              title: "Collect 5 chart pieces",
+              type: "APPROVED_ACTIVITIES",
+              targetCount: 5,
+              config: { eligibility: {}, grantItemKey: "chart-piece", grantQuantity: 1 },
+            },
+            {
+              key: "chart-the-course",
+              title: "Plan a safe route through the reef",
+              type: "COMPLETE_PUZZLE",
+              targetCount: 1,
+              // No `requiresObjectiveKey`: the chart table's item gate (5 pieces held) is the ordering, as at the wreck.
+              config: { eligibility: {}, puzzleKey: "reef-chart-puzzle" },
+            },
+          ],
+        },
+        {
+          key: "defeat-the-kraken",
+          kind: "MAIN",
+          title: "Defeat the Kraken",
+          description:
+            "The Kraken guards the way through. Outwit it in three steps, one after the other.",
+          rewardCoins: 60,
+          rewardXp: 120,
+          config: {
+            rewards: { coins: 60, xp: 120, items: [{ itemKey: "kraken-tooth", quantity: 1 }] },
+            requiresQuestKey: "navigate-the-reef",
+          },
+          objectives: [
+            {
+              key: "read-the-tentacles",
+              title: "Learn the Kraken's tentacle pattern",
+              type: "COMPLETE_PUZZLE",
+              targetCount: 1,
+              config: { eligibility: {}, puzzleKey: "kraken-tentacles" },
+            },
+            {
+              key: "find-the-weak-points",
+              title: "Match each part of the Kraken to what stops it",
+              type: "COMPLETE_PUZZLE",
+              targetCount: 1,
+              config: {
+                eligibility: {},
+                puzzleKey: "kraken-weak-points",
+                requiresObjectiveKey: "read-the-tentacles",
+              },
+            },
+            {
+              key: "steer-to-safety",
+              title: "Steer the ship to safety",
+              type: "COMPLETE_PUZZLE",
+              targetCount: 1,
+              config: {
+                eligibility: {},
+                puzzleKey: "kraken-escape",
+                requiresObjectiveKey: "find-the-weak-points",
+              },
+            },
+          ],
+        },
+        {
+          key: "reef-scavengers",
+          kind: "SIDE",
+          title: "Reef Scavengers",
+          description: "Keep the crew sharp: finish two hygiene or school chores.",
+          rewardCoins: 20,
+          rewardXp: 30,
+          config: { rewards: { coins: 20, xp: 30, items: [] } },
+          objectives: [
+            {
+              key: "scavenge-the-shallows",
+              title: "Finish two hygiene or school chores",
+              type: "APPROVED_ACTIVITIES",
+              targetCount: 2,
+              config: { eligibility: { categories: ["HYGIENE", "SCHOOL"] } },
+            },
+          ],
+        },
+      ],
+      puzzles: [
+        {
+          key: "reef-chart-puzzle",
+          title: "The Reef Chart",
+          type: "route-plan",
+          config: {
+            rewards: { coins: 20, xp: 40, items: [] },
+            data: {
+              width: 5,
+              height: 5,
+              start: { x: 0, y: 4 },
+              goal: { x: 4, y: 0 },
+              reefs: [
+                { x: 2, y: 4 },
+                { x: 0, y: 2 },
+                { x: 1, y: 1 },
+                { x: 3, y: 1 },
+                { x: 3, y: 3 },
+              ],
+              hint: "The straight way is blocked. Find a gap between the rocks!",
+            },
+          },
+        },
+        {
+          key: "kraken-tentacles",
+          title: "The Tentacle Pattern",
+          type: "sequence-match",
+          config: {
+            rewards: { coins: 10, xp: 20, items: [] },
+            data: {
+              symbols: ["Coil", "Slam", "Sweep", "Snap"],
+              sequence: ["Coil", "Sweep", "Slam", "Sweep", "Snap"],
+              hint: "Pip squawks from the rocks: Coil! Sweep! Slam! Sweep! Snap! Watch the tentacles, then tap them in the same order.",
+            },
+          },
+        },
+        {
+          key: "kraken-weak-points",
+          title: "The Kraken's Weak Points",
+          type: "pair-match",
+          config: {
+            rewards: { coins: 15, xp: 30, items: [] },
+            data: {
+              parts: [
+                { key: "tentacle", label: "Slippery tentacle" },
+                { key: "beak", label: "Snapping beak" },
+                { key: "eye", label: "Glowing eye" },
+                { key: "ink", label: "Inky cloud" },
+                { key: "grip", label: "Crushing grip" },
+              ],
+              tools: [
+                { key: "net", label: "Rough net" },
+                { key: "shield", label: "Iron shield" },
+                { key: "glass", label: "Smoked glass" },
+                { key: "lantern", label: "Bright lantern" },
+                { key: "hook", label: "Cutting hook" },
+              ],
+              pairs: {
+                tentacle: "net",
+                beak: "shield",
+                eye: "glass",
+                ink: "lantern",
+                grip: "hook",
+              },
+              hint: "Think about what would stop each part of the Kraken.",
+            },
+          },
+        },
+        {
+          key: "kraken-escape",
+          title: "The Whirlpool Escape",
+          type: "route-plan",
+          config: {
+            rewards: { coins: 20, xp: 40, items: [] },
+            data: {
+              width: 6,
+              height: 6,
+              start: { x: 0, y: 5 },
+              goal: { x: 5, y: 0 },
+              reefs: [
+                { x: 1, y: 1 },
+                { x: 3, y: 1 },
+                { x: 4, y: 1 },
+                { x: 0, y: 3 },
+                { x: 2, y: 3 },
+                { x: 4, y: 3 },
+                { x: 3, y: 4 },
+                { x: 2, y: 5 },
+              ],
+              hint: "Row three is clear of rocks. Can you reach it?",
+            },
+          },
+        },
+      ],
     },
     {
       key: "whispering-jungle",

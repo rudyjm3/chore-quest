@@ -1,7 +1,15 @@
 # Next steps and not-yet-done items
 
-Single list of what was deliberately left out of merged work, so it is not missed. Updated after Phase 5 slice 1 (Shipwreck Cove).
+Single list of what was deliberately left out of merged work, so it is not missed. Updated after Phase 5 slice 2 (Skull Reef).
 Status key: ⬜ not started · 🟡 partial · ⛔ blocked on a decision or an external account.
+
+## Done in Phase 5 slice 2 (Skull Reef)
+
+Skull Reef is playable (placeholder art, ADR 0020): it needs the cove completed **and** one `ship-voyager` (400 coins; the cove now pays a little more so it is
+affordable: 415 coins after claiming its reward with the minimum 7 chores). New `route-plan` puzzle (visible reefs, any safe route accepted, no stored route), chart pieces
+from approved chores gate the chart table, and the Kraken is three chained puzzle stages (sequence, pair, route) behind the chart quest with **no cost**: no debit path was
+built. A new server rule stops a stage of a not-yet-started quest from being solved early. The rope fix shipped separately in PR #12. Whispering Jungle opens after the reef
+as the same empty placeholder.
 
 ## Done in Phase 5 slice 1 (Shipwreck Cove)
 
@@ -48,9 +56,12 @@ The Home Port slice before it: quest board, crew camp, lighthouse hints, Pip dia
 ## What comes next (roadmap order)
 
 1. **Phase 4 remainder:** only the interactive side-mission dialog layer and real artwork/audio are left (everything keeps going through the asset manifests). Re-measure bundles when real artwork lands: placeholder SVGs are ~1 KB, so image optimization has not been needed yet.
-2. **Phase 5 — Complete Pirate Campaign:** Shipwreck Cove ✅. Remaining: Skull Reef (navigation + Kraken), Whispering Jungle, Treasure Island, and more puzzle types in `src/game/puzzles`.
+2. **Phase 5 — Complete Pirate Campaign:** Shipwreck Cove ✅, Skull Reef ✅. Remaining: Whispering Jungle (clues and artifacts), Treasure Island, and any further puzzle types in `src/game/puzzles`.
 3. **Phase 6 — MVP testing and launch preparation:** full parent/child e2e journeys and an approval-pipeline load test; security review (CSP, edge rate limiting, dependency audit); WCAG 2.2 AA audit; mobile performance budget and PWA; privacy/COPPA legal review with retention/deletion flows and parental-consent copy (the photo decision belongs here); pilot with a few families; Vercel + Supabase production setup. The real email provider must be in place before the pilot.
 
-Suggested immediate order: scope Skull Reef (navigation plus the Kraken challenge). It will likely need two more puzzle types (a route/waypoint puzzle and a multi-stage
-timing-free challenge), a third ship tier gate (`ship-voyager`, 400 coins, requires Shipwreck Cove completed, the same shape as the explorer), and a decision on whether
-the Kraken needs a real cost (which would need the inventory debit path ADR 0019 deliberately did not add).
+Suggested immediate order: Whispering Jungle (clues and artifacts). It may need a clue/artifact puzzle type and a decision on whether collecting artifacts is a new objective
+kind or more held items; a ship gate for it (`ship-captain`, 800 coins, needs Skull Reef completed) is already in the catalogue but not wired as an unlock. If a real cost is ever wanted
+(spending items to win a challenge) it needs its own ADR for an inventory debit path first.
+
+Known limitations from slice 2: the route board is arrow-button only (no drag or swipe); the Kraken has no fail state or cost by design; failed attempts are still unbounded rows
+(Phase 6 rate limiting); the achievement "Master Shipwright" only reaches children who solve the repair puzzle after this change; art is placeholder.

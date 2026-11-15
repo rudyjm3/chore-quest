@@ -51,4 +51,14 @@ export const pirateAchievements: AchievementDefinitionInput[] = [
     rewardCoins: 30,
     rewardXp: 60,
   },
+  {
+    key: "pirate.shipwright",
+    hint: "A wreck is only a ship waiting for the right tools…",
+    title: "Master Shipwright",
+    description: "Repair the wrecked ship in Shipwreck Cove.",
+    iconKey: "achievement.master-shipwright",
+    criteria: { type: "PUZZLE_COMPLETED", puzzleKey: "repair-puzzle" },
+    rewardCoins: 30,
+    rewardXp: 60,
+  },
 ];

@@ -282,7 +282,7 @@ describe("Shipwreck Cove: salvage and repair", () => {
     const coinsBefore = (await getWallets(db, kid.child.id)).COINS;
     const ok = await submitPuzzleAnswer(db, kid.ctx, id, ANSWER);
     expect(ok.correct).toBe(true);
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(coinsBefore + 15);
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(coinsBefore + 25 + 30);
     expect((await inventoryByItemKey(db, kid.child.id))["salvage-plank"]).toBe(4);
     expect((await submitPuzzleAnswer(db, kid.ctx, id, ANSWER)).alreadyCompleted).toBe(true);
     expect(
@@ -322,7 +322,8 @@ describe("Shipwreck Cove: salvage and repair", () => {
     const cove = await statusOf(kid.ctx, "shipwreck-cove");
     expect(cove.status).toBe("COMPLETED");
     expect(cove.quests.find((q) => q.key === "salvage-the-wreck")!.status).toBe("CLAIMED");
-    expect((await statusOf(kid.ctx, "skull-reef")).status).toBe("UNLOCKED");
+    // Skull Reef also needs the voyager ship (ADR 0020), so finishing the cove alone leaves it locked.
+    expect((await statusOf(kid.ctx, "skull-reef")).status).toBe("LOCKED");
 
     const before = await getWallets(db, kid.child.id);
     const fragments = (await inventoryByItemKey(db, kid.child.id))["map-fragment"] ?? 0;
@@ -404,8 +405,8 @@ describe("Shipwreck Cove: puzzle race", () => {
     expect(await db.puzzleAttempt.count({ where: { childId: kid.child.id, puzzleId: id } })).toBe(
       1,
     );
-    // Puzzle reward (15) plus quest reward (40) once each.
-    expect((await getWallets(db, kid.child.id)).COINS).toBe(coinsBefore + 15 + 40);
+    // Puzzle reward (25), quest reward (50) and the shipwright achievement (30) once each.
+    expect((await getWallets(db, kid.child.id)).COINS).toBe(coinsBefore + 25 + 50 + 30);
     expect(
       await db.rewardLedgerEntry.count({
         where: { childId: kid.child.id, sourceKey: { startsWith: "puzzle:" }, currency: "COINS" },

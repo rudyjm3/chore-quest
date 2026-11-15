@@ -71,10 +71,10 @@ Depends on: Phase 3 pipeline stability, production artwork.
 Depends on: Phase 4.
 
 - ✅ Shipwreck Cove (functional, placeholder art): ship gate, salvage objectives, gated Wreck and the `pair-match` repair puzzle (ADR 0019); grandfathering and an idempotent ensure step for existing households
-- ⬜ Skull Reef (navigation + Kraken challenge)
+- ✅ Skull Reef (functional, placeholder art): voyager ship gate and cove economy, chart pieces, the `route-plan` puzzle and a three-stage Kraken built from chained puzzle objectives with no cost (ADR 0020)
 - ⬜ Whispering Jungle (clues + artifacts)
 - ⬜ Treasure Island (final treasure, campaign completion rewards)
-- 🟡 Additional puzzle types in `src/game/puzzles` (`pair-match` ✅; more needed for Skull Reef and later)
+- 🟡 Additional puzzle types in `src/game/puzzles` (`pair-match` ✅, `route-plan` ✅; Whispering Jungle may need clue/artifact types)
 
 ## Phase 6 — MVP Testing and Launch Preparation ⬜
 

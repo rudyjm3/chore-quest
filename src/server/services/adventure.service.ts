@@ -178,6 +178,8 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
             description: quest.description,
             rewards: questConfigSchema.parse(quest.config).rewards,
             status: qp?.status ?? "LOCKED",
+            /** The quest that must be finished first, when this one is chained (display only). */
+            requiresQuestKey: questConfigSchema.parse(quest.config).requiresQuestKey ?? null,
             objectives: quest.objectives.map((objective) => {
               const op = qp?.objectives.find((o) => o.objectiveId === objective.id);
               const objectiveConfig = parseObjectiveConfig(objective.config);
@@ -197,7 +199,9 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
                 completed: Boolean(op?.completedAt),
                 /** Display hints only (ADR 0015); the server re-checks the gate when a puzzle is submitted. */
                 puzzleKey: objectiveConfig.puzzleKey ?? null,
-                available: prereqDone,
+                /** Display hint: the previous objective is done and the quest itself has been started. */
+                available: prereqDone && Boolean(qp) && qp?.status !== "LOCKED",
+                requiresObjectiveKey: objectiveConfig.requiresObjectiveKey ?? null,
               };
             }),
           };
@@ -622,7 +626,32 @@ async function puzzleObjectiveGate(tx: Tx, childId: string, chapterId: string, p
       return { available: true, objectiveProgressId: op.id, questProgressId: qp.id };
     }
   }
-  // Puzzle not tied to an active objective: allow play, no quest progress.
+  // A stage of a quest that has not started yet (chained behind another quest, ADR 0020) must not be playable:
+  // it would pay out and be marked solved without ever advancing its objective, leaving the quest stuck.
+  const owners = await tx.adventureQuest.findMany({
+    where: { chapterId, objectives: { some: { type: "COMPLETE_PUZZLE" } } },
+    include: { objectives: true },
+  });
+  for (const quest of owners) {
+    const owns = quest.objectives.some(
+      (o) => o.type === "COMPLETE_PUZZLE" && parseObjectiveConfig(o.config).puzzleKey === puzzleKey,
+    );
+    if (!owns) continue;
+    const progress = await tx.questProgress.findUnique({
+      where: { childId_questId: { childId, questId: quest.id } },
+      select: { status: true },
+    });
+    if (progress?.status === "COMPLETED" || progress?.status === "CLAIMED") continue;
+    const requiredKey = questConfigSchema.parse(quest.config).requiresQuestKey;
+    const required = requiredKey
+      ? await tx.adventureQuest.findFirst({ where: { chapterId, key: requiredKey } })
+      : null;
+    return {
+      available: false,
+      reason: required ? `Finish "${required.title}" first` : "Not yet",
+    };
+  }
+  // Puzzle not tied to any quest objective: allow play, no quest progress.
   return { available: true };
 }
 
