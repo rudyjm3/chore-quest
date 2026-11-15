@@ -4,14 +4,14 @@ Theme key: `pirate`. Source of truth: `src/game/themes/pirate/`. All numbers bel
 
 ## Chapters
 
-| #   | Key                 | Location          | Status      | Unlock                                              | Completion                  | Reward                           |
-| --- | ------------------- | ----------------- | ----------- | --------------------------------------------------- | --------------------------- | -------------------------------- |
-| 1   | `home-port`         | Home Port         | PLAYABLE    | always                                              | quest `prepare-the-ship`    | 50 coins, 100 XP, 1 map fragment |
-| 2   | `parrot-island`     | Parrot Island     | PLAYABLE    | Home Port completed **and** 3 × `supply-crate`      | quest `recover-the-compass` | 75 coins, 150 XP, 1 map fragment |
-| 3   | `shipwreck-cove`    | Shipwreck Cove    | PLACEHOLDER | Parrot Island completed                             | —                           | 100 / 200 / 1 fragment           |
-| 4   | `skull-reef`        | Skull Reef        | PLACEHOLDER | Shipwreck Cove completed                            | —                           | 125 / 250 / 1 fragment           |
-| 5   | `whispering-jungle` | Whispering Jungle | PLACEHOLDER | Skull Reef completed                                | —                           | 150 / 300 / 1 fragment           |
-| 6   | `treasure-island`   | Treasure Island   | PLACEHOLDER | Whispering Jungle completed **and** 5 map fragments | —                           | 500 / 1000 / 1 fragment          |
+| #   | Key                 | Location          | Status      | Unlock                                              | Completion                  | Reward                            |
+| --- | ------------------- | ----------------- | ----------- | --------------------------------------------------- | --------------------------- | --------------------------------- |
+| 1   | `home-port`         | Home Port         | PLAYABLE    | always                                              | quest `prepare-the-ship`    | 50 coins, 100 XP, 1 map fragment  |
+| 2   | `parrot-island`     | Parrot Island     | PLAYABLE    | Home Port completed **and** 3 × `supply-crate`      | quest `recover-the-compass` | 75 coins, 150 XP, 1 map fragment  |
+| 3   | `shipwreck-cove`    | Shipwreck Cove    | PLAYABLE    | Parrot Island completed **and** 1 × `ship-explorer` | quest `salvage-the-wreck`   | 100 coins, 200 XP, 1 map fragment |
+| 4   | `skull-reef`        | Skull Reef        | PLACEHOLDER | Shipwreck Cove completed                            | —                           | 125 / 250 / 1 fragment            |
+| 5   | `whispering-jungle` | Whispering Jungle | PLACEHOLDER | Skull Reef completed                                | —                           | 150 / 300 / 1 fragment            |
+| 6   | `treasure-island`   | Treasure Island   | PLACEHOLDER | Whispering Jungle completed **and** 5 map fragments | —                           | 500 / 1000 / 1 fragment           |
 
 Six chapters → six map fragments. After completing chapters 1 and 2 and claiming both rewards the child
 holds two of six (integration-tested).
@@ -52,11 +52,34 @@ Each chapter scene lists its locations. A `quest-board` location with a `questKe
 - **Feedback**: a needle dial spins when the server says "solved" and wobbles on a wrong attempt; a sound toggle (off by default, remembered on
   this device only) plays a short synthesised chime. All of it is CSS/SVG and client-only (ADR 0016) and is switched off by `prefers-reduced-motion`.
 
+## Shipwreck Cove (chapter 3, ADR 0019)
+
+Unlock: Parrot Island completed **and** one `ship-explorer` (150 coins, sold once Parrot Island is completed, so there is no cycle). Buying the
+ship re-evaluates unlocks in the same purchase. The map's locked screen names the missing ship. Children who unlocked the cove while it was a
+placeholder keep it without the ship (unlocks are never revoked).
+
+Locations: Salvage Yard (quest board for the main quest), Tide Pools (quest board for the side quest), The Wreck (puzzle, gated), Quiet Lagoon.
+
+- **Main quest `salvage-the-wreck`** (40 coins / 80 XP), three objectives that run side by side:
+  1. `gather-planks`: 4 approved activities of any category, each grants 1 `salvage-plank`.
+  2. `gather-rope`: 3 approved activities in `HYGIENE`, `SCHOOL` or `PET_CARE`, each grants 1 `rope-coil`. A completion feeds the first
+     objective that accepts it, so planks fill first; routine runs have no category and do not count.
+  3. `repair-the-ship`: solve `repair-puzzle`.
+- **Side mission `tide-pool-treasures`** (15 coins / 25 XP): 2 approved `HELPING` or `PET_CARE` activities. Optional.
+- **The Wreck** needs the child to **hold 4 `salvage-plank`** (`requiresItemKey` + `requiresItemQuantity`). Salvage is only held, never spent: there
+  is no inventory debit path. The server checks it on every submit under the child lock; the page shows "needs 4 × Salvage Plank (N more)".
+- **Puzzle `repair-puzzle`**: type `pair-match`, five damaged parts to five tools (120 possible answers), reward 15 coins / 30 XP. The browser gets parts, tools
+  and the hint; tools are listed by key so their order does not follow the answer. Wrong attempts get the same vague line as the compass puzzle.
+- Chapter reward 100 coins / 200 XP / 1 map fragment; completing the chapter unlocks Skull Reef (still a placeholder).
+- **Economy check** (integration test): by the time Parrot Island completes a child who bought no cosmetics holds 210 coins (price 150), 285 after
+  claiming the Parrot Island reward.
+- Art is placeholder SVG (`salvage-plank`, `rope-coil`, the cove scene) through the manifest.
+
 ## Economy
 
 - Drip: every approved activity while the adventure is active gives 5 coins and 10 XP.
 - Level thresholds (XP): 100, 250, 500, 900, 1400, 2000, 2800, 3800, 5000.
-- Items: resources (`supply-crate`, `compass-feather`), collectibles (`map-fragment` max 6, `magic-compass`,
+- Items: resources (`supply-crate`, `compass-feather`, `salvage-plank`, `rope-coil`), collectibles (`map-fragment` max 6, `magic-compass`,
   `gold-doubloon` display-only), ships (`ship-starter` granted at start; explorer 150c, voyager 400c,
   captain 800c, legendary 1500c, each gated by a chapter), upgrades (`upgrade-patched-sail` 40c,
   `upgrade-parrot-perch` 90c, `upgrade-brass-cannon` 200c), cosmetics (`cosmetic-captain-hat` 60c).

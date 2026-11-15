@@ -52,8 +52,9 @@ export const chapterLocationSchema = z.object({
   puzzleKey: z.string().optional(),
   npcKey: z.string().optional(),
   description: z.string().optional(),
-  /** The child must currently hold at least one of this item to use the location (ADR 0014). */
+  /** The child must currently hold at least `requiresItemQuantity` of this item to use the location (ADR 0014, 0019). Never consumed. */
   requiresItemKey: z.string().optional(),
+  requiresItemQuantity: z.number().int().min(1).default(1),
   /** One-time item reward granted on the first visit, through grantItem (ADR 0014). */
   reward: itemRewardSchema.optional(),
 });

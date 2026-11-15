@@ -66,15 +66,15 @@ Depends on: Phase 3 pipeline stability, production artwork.
 - ✅ Home Port polish: lighthouse once per day (ADR 0017); quest detail dialog on the quest board and a dressed-up crew-camp ship scene (ADR 0018)
 - ✅ Bundle/image pass measured: only the quest detail dialog is loaded lazily (quest board first-load JS −18 KB); chapter pages and the (SVG, ~1 KB) images have nothing worth splitting yet — see `docs/BUILD_HEALTH_REPORT.md`
 
-## Phase 5 — Complete Pirate Campaign ⬜
+## Phase 5 — Complete Pirate Campaign 🟡
 
 Depends on: Phase 4.
 
-- ⬜ Shipwreck Cove (salvage + repair mini-game)
+- ✅ Shipwreck Cove (functional, placeholder art): ship gate, salvage objectives, gated Wreck and the `pair-match` repair puzzle (ADR 0019); grandfathering and an idempotent ensure step for existing households
 - ⬜ Skull Reef (navigation + Kraken challenge)
 - ⬜ Whispering Jungle (clues + artifacts)
 - ⬜ Treasure Island (final treasure, campaign completion rewards)
-- ⬜ Additional puzzle types in `src/game/puzzles`
+- 🟡 Additional puzzle types in `src/game/puzzles` (`pair-match` ✅; more needed for Skull Reef and later)
 
 ## Phase 6 — MVP Testing and Launch Preparation ⬜
 

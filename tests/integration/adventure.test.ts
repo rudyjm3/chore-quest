@@ -140,7 +140,8 @@ describe("pirate adventure progression", () => {
     const parrot = state.chapters.find((c) => c.key === "parrot-island")!;
     expect(parrot.status).toBe("COMPLETED");
     expect(state.inventory["magic-compass"]).toBe(1);
-    expect(state.chapters.find((c) => c.key === "shipwreck-cove")?.status).toBe("UNLOCKED");
+    // Shipwreck Cove also needs the explorer ship (ADR 0019).
+    expect(state.chapters.find((c) => c.key === "shipwreck-cove")?.status).toBe("LOCKED");
 
     await claimChapterReward(db, childCtx, parrot.id);
     expect((await inventoryByItemKey(db, child.id))["map-fragment"]).toBe(2);

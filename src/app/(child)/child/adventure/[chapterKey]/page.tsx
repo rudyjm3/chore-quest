@@ -12,10 +12,13 @@ import { getAssetManifest } from "@/game/themes";
 import { prisma } from "@/lib/db/prisma";
 import { requireChildContext } from "@/server/policies/context";
 import { getAdventureState } from "@/server/services/adventure.service";
+import { ensureAdventureProgressForChild } from "@/server/services/chapter-unlock.service";
 
 export default async function ChapterPage({ params }: PageProps<"/child/adventure/[chapterKey]">) {
   const { chapterKey } = await params;
   const ctx = await requireChildContext();
+  // Quests added to a chapter after this child unlocked it get their progress rows here (ADR 0019).
+  await ensureAdventureProgressForChild(prisma, ctx, "pirate");
   const state = await getAdventureState(prisma, ctx, "pirate");
   const chapter = state.chapters.find((c) => c.key === chapterKey);
   if (!chapter) notFound();
@@ -164,6 +167,8 @@ export default async function ChapterPage({ params }: PageProps<"/child/adventur
                 puzzleKey={puzzle.key}
                 available={objective?.available ?? true}
                 waitingFor={waitingFor}
+                inventory={state.inventory}
+                itemNames={state.itemNames}
               />
             );
           })}

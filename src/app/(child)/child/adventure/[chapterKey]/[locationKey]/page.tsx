@@ -10,6 +10,7 @@ import { describeReward } from "@/features/adventures/quest-board";
 import { prisma } from "@/lib/db/prisma";
 import { requireChildContext } from "@/server/policies/context";
 import { getAdventureState } from "@/server/services/adventure.service";
+import { ensureAdventureProgressForChild } from "@/server/services/chapter-unlock.service";
 
 export async function generateMetadata({
   params,
@@ -25,6 +26,8 @@ export default async function LocationPage({
   const { chapterKey, locationKey } = await params;
   const ctx = await requireChildContext();
   // Own data only: the state is scoped to the signed-in child.
+  // Quests added to a chapter after this child unlocked it get their progress rows here (ADR 0019).
+  await ensureAdventureProgressForChild(prisma, ctx, "pirate");
   const state = await getAdventureState(prisma, ctx, "pirate");
   const chapter = state.chapters.find((c) => c.key === chapterKey);
   if (!chapter) notFound();
@@ -75,6 +78,8 @@ export default async function LocationPage({
           puzzleKey={view.puzzleKey}
           available={view.available}
           waitingFor={view.waitingFor}
+          inventory={state.inventory}
+          itemNames={state.itemNames}
         />
       )}
     </div>

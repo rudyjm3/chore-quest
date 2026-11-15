@@ -25,6 +25,22 @@ export const pirateItems: ItemDefinitionInput[] = [
     config: { chapterKey: "parrot-island" },
   },
   {
+    key: "salvage-plank",
+    name: "Salvage Plank",
+    description: "A sturdy plank pulled from the wreck. Hold four to start repairing the ship.",
+    type: "RESOURCE",
+    iconKey: "item.salvage-plank",
+    config: { chapterKey: "shipwreck-cove" },
+  },
+  {
+    key: "rope-coil",
+    name: "Coil of Rope",
+    description: "Good rope for rigging, found while looking after yourself and your crew.",
+    type: "RESOURCE",
+    iconKey: "item.rope-coil",
+    config: { chapterKey: "shipwreck-cove" },
+  },
+  {
     key: "gold-doubloon",
     name: "Gold Doubloon",
     description:
