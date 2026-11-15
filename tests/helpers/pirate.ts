@@ -99,3 +99,37 @@ export async function finishShipwreckCove(h: Household, kid: Kid = h.kids[0]!) {
   await submitPuzzleAnswer(db, kid.ctx, await puzzleId("repair-puzzle"), COVE_ANSWER);
   await claimChapterReward(db, kid.ctx, await chapterId("shipwreck-cove"));
 }
+
+export const REEF_CHART_ROUTE = ["right", "up", "up", "right", "up", "up", "right", "right"];
+export const REEF_ESCAPE_ROUTE = [
+  "right",
+  "up",
+  "up",
+  "up",
+  "right",
+  "right",
+  "right",
+  "right",
+  "up",
+  "up",
+];
+export const KRAKEN_TENTACLES = { sequence: ["Coil", "Sweep", "Slam", "Sweep", "Snap"] };
+export const KRAKEN_WEAK_POINTS = {
+  pairs: { tentacle: "net", beak: "shield", eye: "glass", ink: "lantern", grip: "hook" },
+};
+
+/** Skull Reef played through (voyager bought on the way) and its reward claimed. Nothing else bought. */
+export async function finishSkullReef(h: Household, kid: Kid = h.kids[0]!) {
+  await finishShipwreckCove(h, kid);
+  await buyShip(h, kid, "ship-voyager");
+  await h.approve(kid.child.id, "CHORE", 5);
+  await submitPuzzleAnswer(db, kid.ctx, await puzzleId("reef-chart-puzzle"), {
+    moves: REEF_CHART_ROUTE,
+  });
+  await submitPuzzleAnswer(db, kid.ctx, await puzzleId("kraken-tentacles"), KRAKEN_TENTACLES);
+  await submitPuzzleAnswer(db, kid.ctx, await puzzleId("kraken-weak-points"), KRAKEN_WEAK_POINTS);
+  await submitPuzzleAnswer(db, kid.ctx, await puzzleId("kraken-escape"), {
+    moves: REEF_ESCAPE_ROUTE,
+  });
+  await claimChapterReward(db, kid.ctx, await chapterId("skull-reef"));
+}
