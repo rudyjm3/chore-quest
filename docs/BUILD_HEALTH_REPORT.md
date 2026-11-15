@@ -434,3 +434,34 @@ The 210 is 7 chores × 5, quests 20 + 30, the compass puzzle 10, the Home Port c
 - Skull Reef, Whispering Jungle, Treasure Island and Phase 6 items untouched. Out of scope and untouched: real email provider, photos on submissions, `NOTIFICATION_RETENTION_DAYS`.
 
 Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+
+## Phase 5, slice 2: Skull Reef
+
+**What changed**
+
+- ADR 0020 (committed before the route-plan and Kraken implementation): voyager gate and economy, the `route-plan` puzzle, the Kraken as chained puzzle stages without a cost, items and locations.
+- **Voyager gate:** Skull Reef needs the cove completed and one `ship-voyager`; a purchase unlocks it in the same transaction; the locked map screen names both requirements; grandfathered children keep the chapter and get their quest rows from the ensure step.
+- **Economy (measured, asserted by a test):** 285 coins after claiming Parrot Island, 135 after the explorer; the minimum cove (7 chores, ten-chores achievement) gave 210, then 365 after claim: 35 short of 400. Cove rewards raised in theme data: main quest 40 to 50, repair puzzle 15 to 25, new "Master Shipwright" achievement 30. Now **315 at cove completion and 415 after claiming** (15 to spare, side quest skipped). The voyager price stayed 400.
+- **`route-plan` puzzle:** moves up/down/left/right checked by rule (several routes accepted, revisits legal, at most 64 moves); config rejects unsolvable boards; reefs are visible (planning puzzle) and no route exists in config or view.
+- **Skull Reef content (PLAYABLE):** `navigate-the-reef` (5 chart pieces, held gate at the chart table, route puzzle), `defeat-the-kraken` (sequence, pair, route stages chained with `requiresObjectiveKey`, behind the chart quest, drops a Kraken Tooth), side quest `reef-scavengers`, eight locations, two items, manifest entries and SVG placeholders. Chapter reward unchanged (125 / 250 / 1 fragment).
+- **A real bug found while building the Kraken:** a puzzle that belonged to a quest that was still locked behind `requiresQuestKey` was playable with "no progress", so a stage could be solved early, pay out, be marked solved and leave the quest stuck. `puzzleObjectiveGate` now refuses it (no attempt row); a regression test submits all three stages while the quest is locked.
+- UI: `RoutePuzzle` (arrow buttons and arrow keys, undo, clear, polite live region, impossible steps refused client-side only as a courtesy); `puzzleWaitingFor` names the real prerequisite instead of "any unfinished objective".
+
+**Test counts** (`pnpm check`): unit **186** (was 156), integration **234** (was 213). E2E **63 passed, 14 skipped** (mobile, by design; was 60 / 13) with the new `phase5-reef.spec.ts`. `pnpm format:check` clean; no schema change and no migration.
+
+**Mutation checks** (by hand, restored): removing `lockChildRow` from `submitPuzzleAnswer` fails the route-puzzle race, the Kraken-stage race and the cove race; removing the locked-quest rule fails two tests; stubbing the ensure step fails both new ensure tests.
+
+**Issues met**
+
+- The old cove test assumed Skull Reef unlocked on the cove alone; it and `phase5-cove.spec.ts` now expect it locked behind the voyager.
+- First e2e run: the chart table showed "not ready" instead of "needs 5 × Reef Chart Piece" because the puzzle objective was chained behind collecting. The item gate already orders it (as at the wreck), so the chain was dropped.
+- The sequence puzzle lacked `data-puzzle-type`; added for parity.
+
+**Known limitations / left out**
+
+- No Kraken cost or fail state (a real cost needs an inventory debit ADR); route UI is buttons only; attempt limits still deferred to Phase 6; placeholder art.
+- Children who already solved the repair puzzle do not retroactively get "Master Shipwright"; those who already claimed cove rewards keep the old amounts.
+- Whispering Jungle and Treasure Island untouched. Out of scope and untouched: real email provider, photos, `NOTIFICATION_RETENTION_DAYS`.
+- Rope fix shipped earlier in PR #12 (no engine change); the rope category filter was dropped because planks fill first under the first-match rule.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
