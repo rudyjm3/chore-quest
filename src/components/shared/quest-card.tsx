@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { ProgressBar } from "./progress-bar";
@@ -18,6 +20,7 @@ export function QuestCard({
   status,
   objectives,
   reward,
+  action,
 }: {
   title: string;
   description?: string | null;
@@ -26,6 +29,8 @@ export function QuestCard({
   objectives: QuestCardObjective[];
   /** Optional reward preview line, already formatted. */
   reward?: string;
+  /** Optional last row, e.g. a button that opens the quest detail. */
+  action?: ReactNode;
 }) {
   return (
     <Card
@@ -57,6 +62,7 @@ export function QuestCard({
             Reward: {reward}
           </p>
         ) : null}
+        {action}
       </CardContent>
     </Card>
   );

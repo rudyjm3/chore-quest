@@ -42,6 +42,19 @@ describe("quest board data (getAdventureState + buildQuestBoard)", () => {
     ).toBe(true);
   });
 
+  it("names the location each quest belongs to and links only pages that exist", async () => {
+    const { a } = await twoChildren();
+    const state = await getAdventureState(db, a.ctx, "pirate");
+    const quests = buildQuestBoard(state.chapters).flatMap((s) => s.quests);
+    const byKey = new Map(quests.map((q) => [q.key, q.location]));
+    expect(byKey.get("prepare-the-ship")).toMatchObject({
+      name: "Quest Board",
+      href: "/child/adventure/home-port/quest-board",
+    });
+    // The crew camp has its own page under /child/port, not a location page: named, not linked here.
+    expect(byKey.get("tidy-the-camp")).toMatchObject({ name: "Crew Camp", href: null });
+  });
+
   it("shows only this child's progress, never a sibling's", async () => {
     const { family, ctx, a, b, task } = await twoChildren();
     const { occurrence } = await createOccurrenceFixture(db, {

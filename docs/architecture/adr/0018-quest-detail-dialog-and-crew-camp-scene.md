@@ -10,6 +10,7 @@ rather than a list. Both are presentation over data the pages already load (`get
 ## Decision
 
 **Quest detail.** A dialog (`src/components/ui/dialog.tsx`, Radix) opened from the quest card, not a route and not an expandable card.
+
 - All data is already on the board page and belongs to the signed-in child (`getAdventureState` is scoped to `ctx.childId`), so a route would only
   re-fetch the same rows and add a second place that must enforce scoping. A dialog adds no request and no URL a child could mistype or share.
 - The card gets a full-width "Quest details" button (≥44px) as its last row (`QuestCard` takes an optional `action` slot). A whole-card button is
@@ -22,6 +23,7 @@ rather than a list. Both are presentation over data the pages already load (`get
 **Crew-camp scene.** The scene component is theme-neutral: it receives a ship `AssetEntry` and per-slot anchors (`x`/`y` in percent plus a label)
 as props. The pirate anchors live in `src/game/themes/pirate/camp.ts` and are resolved through `getCrewCampScene(themeKey)`. Item artwork resolves
 through the asset manifest (new placeholder entries for the four wearable items); nothing hard-codes `/assets/...`.
+
 - Slots without an anchor (a theme that adds a slot later) are still listed in the existing picker below the scene, so nothing becomes unwearable.
 - The list/picker with `EquipButton` stays as it is: equip/unequip, `equipCosmetic` and its lock are unchanged (ADR 0013). The scene is a
   read-only view of what is equipped. This also keeps the accessible way to change gear a plain list of labelled buttons.

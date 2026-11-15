@@ -1,6 +1,12 @@
-import type { AdventureDefinition, AssetEntry, AssetManifest, NpcDialogue } from "@/game/schemas";
+import type {
+  AdventureDefinition,
+  AssetEntry,
+  AssetManifest,
+  CrewCampScene,
+  NpcDialogue,
+} from "@/game/schemas";
 
-import { pirateAdventure, pirateAssetManifest, pipDialogue } from "./pirate";
+import { pirateAdventure, pirateAssetManifest, pirateCrewCampScene, pipDialogue } from "./pirate";
 
 /** Registry of authored adventure themes. The seed writes these to the database. */
 export const adventureThemes: Record<
@@ -34,4 +40,16 @@ const dialogues: Record<string, Record<string, NpcDialogue>> = {
 
 export function getNpcDialogue(themeKey: string, npcKey: string): NpcDialogue | null {
   return dialogues[themeKey]?.[npcKey] ?? null;
+}
+
+/** Crew-camp ship scene layout per theme (ADR 0018). */
+const crewCampScenes: Record<string, CrewCampScene> = { pirate: pirateCrewCampScene };
+
+export function getCrewCampScene(themeKey: string): CrewCampScene | null {
+  return crewCampScenes[themeKey] ?? null;
+}
+
+/** A manifest asset by id, or null when the theme has none. */
+export function getAsset(themeKey: string, assetId: string): AssetEntry | null {
+  return getAssetManifest(themeKey)?.assets.find((a) => a.id === assetId) ?? null;
 }

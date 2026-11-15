@@ -49,7 +49,7 @@ export async function getCrewCamp(db: DbClient, ctx: ChildContext, adventureKey:
       equipped: equipped[slot] === row.item.key,
     });
   }
-  return { started: Boolean(progress), slots };
+  return { started: Boolean(progress), themeKey: adventure.themeKey, slots };
 }
 
 /**
