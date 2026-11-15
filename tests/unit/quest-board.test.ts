@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildQuestBoard,
   describeReward,
+  findQuestLocation,
   type BoardChapter,
 } from "@/features/adventures/quest-board";
 
@@ -61,6 +62,35 @@ describe("buildQuestBoard", () => {
     ]);
     expect(board).toHaveLength(1);
     expect(board[0]?.quests.map((q) => q.key)).toEqual(["main", "side"]);
+  });
+});
+
+describe("findQuestLocation", () => {
+  const locations = [
+    { key: "dock", name: "Dock", kind: "harbor" },
+    { key: "quest-board", name: "Quest Board", kind: "quest-board", questKey: "q1" },
+    { key: "camp", name: "Crew Camp", kind: "camp", questKey: "q2" },
+  ];
+  it("links to the page only for locations that have one", () => {
+    expect(findQuestLocation("home-port", locations, "q1")).toEqual({
+      key: "quest-board",
+      name: "Quest Board",
+      href: "/child/adventure/home-port/quest-board",
+    });
+    expect(findQuestLocation("home-port", locations, "q2")).toEqual({
+      key: "camp",
+      name: "Crew Camp",
+      href: null,
+    });
+  });
+  it("is null when no location names the quest", () => {
+    expect(findQuestLocation("home-port", locations, "nope")).toBeNull();
+  });
+  it("buildQuestBoard attaches the location to each quest", () => {
+    const board = buildQuestBoard([
+      { ...chapter("home-port", 1, "UNLOCKED", [quest("q1", "ACTIVE")]), locations },
+    ]);
+    expect(board[0]?.quests[0]?.location?.name).toBe("Quest Board");
   });
 });
 

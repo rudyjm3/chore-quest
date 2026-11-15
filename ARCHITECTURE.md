@@ -139,13 +139,13 @@ Date rules: [docs/database/TIMEZONES.md](docs/database/TIMEZONES.md).
 
 ### Home Port slice
 
-- `crew-camp.service`: `getCrewCamp` (own wearable items by slot, ownership re-checked on read) and `equipCosmetic` (lock child → re-read progress → check ownership and `config.slot` → write `{ equipped }` into `child_adventure_progress.state`; ADR 0013). State schema: `src/game/schemas/adventure-state.ts`; pure helpers: `src/features/adventures/crew-camp.ts`.
+- `crew-camp.service`: `getCrewCamp` (own wearable items by slot, ownership re-checked on read) and `equipCosmetic` (lock child → re-read progress → check ownership and `config.slot` → write `{ equipped }` into `child_adventure_progress.state`; ADR 0013). State schema: `src/game/schemas/adventure-state.ts`; pure helpers: `src/features/adventures/crew-camp.ts`. The crew camp page also draws a read-only ship scene (`crew-camp-scene.tsx`): slot anchors come from theme data (`getCrewCampScene`, `src/game/themes/pirate/camp.ts`), item art from the asset manifest (ADR 0018).
 - `adventure.service` (ext.): `getPuzzleForChild` returns a puzzle with only the verifier's `toClientView` (ADR 0015); `getAdventureState` objectives also return `puzzleKey` and `available` (display hints).
 - `location.service` (ext.): `getLighthouseStatus` / `lookOutFromLighthouse` (lock child → re-read state → write `lighthouse.lastLookDate` for the household-local day; ADR 0017).
 - `location.service`: `getLocationStatus` / `visitLocation` — one-time item reward at a configured place, `requiresItemKey` gate, `grantItem` with `sourceKeys.locationItem` and source type `LOCATION_REWARD` (ADR 0014).
 - `adventure.service.getAdventureState` now also returns each quest's `rewards` and each chapter's `hint`. The quest board (`src/features/adventures/quest-board.ts`, pure) only filters that state; it has no tables or writes.
 - Pure engine modules: `src/game/engine/dialogue.ts` (situation and line selection over engine state, rotating by household-local date) and `lighthouse.ts` (hint of the current chapter). Authored text lives in `src/game/themes/pirate/dialogue.ts` and chapter `config.hint`.
-- Child routes: `/child/port` (hub with Pip), `/child/port/quest-board`, `/child/port/crew-camp`, `/child/port/lighthouse`, `/child/port/hidden-cove`; reachable from the "More" menu. Chapter scene locations open `/child/adventure/[chapterKey]/[locationKey]` (feather grove, compass shrine; pure selection in `src/features/adventures/location-view.ts`). Client-only scene state (Zustand store, feedback dial, sound toggle) lives in `src/features/adventures/` and is never persisted (ADR 0016).
+- Child routes: `/child/port` (hub with Pip), `/child/port/quest-board`, `/child/port/crew-camp`, `/child/port/lighthouse`, `/child/port/hidden-cove`; reachable from the "More" menu. Chapter scene locations open `/child/adventure/[chapterKey]/[locationKey]` (feather grove, compass shrine; pure selection in `src/features/adventures/location-view.ts`). The quest board opens a quest detail dialog (`quest-detail-dialog.tsx`; the Radix content is split out and loaded on first tap; `findQuestLocation` in `quest-board.ts`; ADR 0018). Client-only scene state (Zustand store, feedback dial, sound toggle) lives in `src/features/adventures/` and is never persisted (ADR 0016).
 
 ## Service relationships and the approval pipeline
 
@@ -228,7 +228,7 @@ More: [docs/gameplay/GAME_ENGINE.md](docs/gameplay/GAME_ENGINE.md),
 - All hot queries are covered by composite indexes on `(familyId, childId, localDate)` and status.
 - Activity history and ledgers are cursor-paginated (`listLedger`).
 - Per-child row locking bounds contention to one household member; no global locks.
-- Game assets are lazy-loaded per chapter; the world map loads one background image.
+- Game assets are referenced per chapter through the manifest; the world map loads one background image. Measured (see the build health report): page-specific JS on chapter pages is ~2 KB over the shared bundle and artwork is ~1 KB SVG placeholders, so only the quest detail dialog is code-split.
 - Multi-tenancy is by `familyId`; moving to RLS or schema-per-tenant is not planned for the MVP.
 
 ## Architecture decision records

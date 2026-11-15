@@ -290,3 +290,22 @@
     animation: none;
   }
 }
+
+/* Crew-camp ship (ADR 0018): decorative sway on an inner span, never on a clickable element. */
+@keyframes cq-sway {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+.animate-sway {
+  animation: cq-sway 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-sway {
+    animation: none;
+  }
+}

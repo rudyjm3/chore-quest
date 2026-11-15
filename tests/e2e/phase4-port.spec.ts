@@ -44,6 +44,21 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
     const cards = child.getByTestId("quest-card");
     await expect(cards.first()).toBeVisible();
     await expect(child.getByTestId("quest-reward").first()).toContainText("Reward:");
+    // Quest detail opens on tap (ADR 0018): description area, steps, reward and place; Escape closes it.
+    const detailsButton = child.getByTestId(/^quest-details-/).first();
+    expect((await detailsButton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await detailsButton.click();
+    const detail = child.getByTestId("quest-detail");
+    await expect(detail).toBeVisible();
+    await expect(detail.getByTestId("quest-detail-objective").first()).toBeVisible();
+    await expect(detail.getByTestId("quest-detail-reward")).toContainText("Reward:");
+    // The dialog zooms in; measure the target once it has settled (a mid-animation scale reads smaller).
+    await detail.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const closeButton = detail.getByRole("button", { name: "Close" });
+    expect((await closeButton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await child.keyboard.press("Escape");
+    await expect(detail).toHaveCount(0);
+    await expect(detailsButton).toBeFocused();
     // Touch target of the back link.
     const back = child.getByRole("link", { name: "← Home Port" });
     expect((await back.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -96,11 +111,15 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
       await wear.click();
     }
     await expect(slot.locator('[data-worn="true"]')).toContainText("Wearing this");
+    // The ship scene shows the hat in the head spot (ADR 0018).
+    await expect(child.getByTestId("scene-slot-head")).toHaveAttribute("data-worn", "true");
+    await expect(child.getByTestId("scene-slot-head")).toHaveAccessibleName(/Head: Captain/);
     await child.reload();
     await expect(child.getByTestId("camp-slot-head").locator('[data-worn="true"]')).toBeVisible();
 
     await child.getByTestId("unequip-cosmetic-captain-hat").click();
     await expect(child.getByTestId("camp-slot-head").locator('[data-worn="true"]')).toHaveCount(0);
+    await expect(child.getByTestId("scene-slot-head")).toHaveAttribute("data-worn", "false");
     await ctx.close();
   });
 

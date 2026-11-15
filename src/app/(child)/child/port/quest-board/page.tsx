@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { QuestCard } from "@/components/shared/quest-card";
+import { QuestDetailDialog } from "@/features/adventures/components/quest-detail-dialog";
 import { Button } from "@/components/ui/button";
 import { buildQuestBoard, describeReward } from "@/features/adventures/quest-board";
 import { prisma } from "@/lib/db/prisma";
@@ -54,6 +55,13 @@ export default async function QuestBoardPage() {
                   status={quest.status}
                   objectives={quest.objectives}
                   reward={describeReward(quest.rewards) || undefined}
+                  action={
+                    <QuestDetailDialog
+                      quest={quest}
+                      chapterTitle={section.chapterTitle}
+                      reward={describeReward(quest.rewards)}
+                    />
+                  }
                 />
               ))}
             </div>

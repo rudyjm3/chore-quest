@@ -76,11 +76,11 @@ current assets are flat-colour placeholders flagged `placeholder: true` in the m
 
 Phase 4 delivered the supply shop and the treasure chest, and the Home Port slice built the rest (all at `/child/port`, reachable from "More"):
 quest board ✅, crew camp ✅ (ADR 0013), lighthouse ✅, Pip dialogue ✅ and hidden cove ✅ (ADR 0014), with placeholder art through the manifest.
-Differences from the original note: the lighthouse allows one look per household-local day (`state.lighthouse.lastLookDate`, ADR 0017: the hint appears after the look); quest descriptions are always visible instead of on tap;
+Differences from the original note: the lighthouse allows one look per household-local day (`state.lighthouse.lastLookDate`, ADR 0017: the hint appears after the look); the quest board opens a detail dialog per quest (ADR 0018) and the crew camp shows a ship scene;
 the cove requires a `map-fragment` and rewards the `cove-pearl` collectible; Pip's line rotates by household-local date and appears on the hub.
 
 - **Quest board.** Read-only list of the chapter's `ACTIVE` quests and their objectives from `getAdventureState` (title, progress `current/target`,
-  reward preview). No new tables. Tapping a quest shows its description; progress comes only from the engine.
+  reward preview). No new tables. A "Quest details" button on each card opens a dialog (loaded on first tap) with the description, every step with its progress, the reward and the location the quest belongs to (linked when that location has a page); progress comes only from the engine (ADR 0018).
 - **Crew camp (cosmetic equip/unequip).** Selection lives in `child_adventure_progress.state` as `{ equipped: { head?: itemKey, sail?: itemKey, deck?: itemKey } }`
   validated by a Zod schema in `src/game/schemas`. A service action (`equipCosmetic`) locks the child row, checks the child owns the item and the slot
   matches `config.slot`, then writes the small state. It is never read for rewards or progress; animation state (bobbing, hover) stays in

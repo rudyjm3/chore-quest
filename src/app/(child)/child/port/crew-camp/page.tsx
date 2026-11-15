@@ -4,9 +4,10 @@ import { ItemArt } from "@/components/shared/item-art";
 import { RarityBadge } from "@/components/shared/rarity-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { slotLabel } from "@/features/adventures/crew-camp";
+import { buildSceneSlots, slotLabel } from "@/features/adventures/crew-camp";
+import { CrewCampScene } from "@/features/adventures/components/crew-camp-scene";
 import { EquipButton } from "@/features/adventures/components/equip-button";
-import { getItemAsset } from "@/game/themes";
+import { getAsset, getCrewCampScene, getItemAsset } from "@/game/themes";
 import { prisma } from "@/lib/db/prisma";
 import { requireChildContext } from "@/server/policies/context";
 import { getCrewCamp } from "@/server/services/crew-camp.service";
@@ -18,6 +19,7 @@ export default async function CrewCampPage() {
   const ctx = await requireChildContext();
   const camp = await getCrewCamp(prisma, ctx, "pirate");
   const slots = Object.entries(camp.slots).sort(([a], [b]) => a.localeCompare(b));
+  const sceneConfig = camp.themeKey ? getCrewCampScene(camp.themeKey) : null;
 
   return (
     <div className="space-y-5">
@@ -35,7 +37,15 @@ export default async function CrewCampPage() {
             Start your adventure
           </Link>
         </p>
-      ) : slots.length === 0 ? (
+      ) : null}
+      {camp.started && camp.themeKey && sceneConfig ? (
+        <CrewCampScene
+          themeKey={camp.themeKey}
+          ship={getAsset(camp.themeKey, sceneConfig.shipAssetId)}
+          slots={buildSceneSlots(sceneConfig.slots, camp.slots)}
+        />
+      ) : null}
+      {!camp.started ? null : slots.length === 0 ? (
         <p className="rounded-2xl border-2 border-dashed border-pirate-wood/40 p-6 text-center">
           You have nothing to wear yet. Visit the{" "}
           <Link href="/child/supplies" className="font-bold underline">
