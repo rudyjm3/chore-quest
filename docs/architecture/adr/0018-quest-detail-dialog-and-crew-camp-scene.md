@@ -12,9 +12,9 @@ rather than a list. Both are presentation over data the pages already load (`get
 **Quest detail.** A dialog (`src/components/ui/dialog.tsx`, Radix) opened from the quest card, not a route and not an expandable card.
 - All data is already on the board page and belongs to the signed-in child (`getAdventureState` is scoped to `ctx.childId`), so a route would only
   re-fetch the same rows and add a second place that must enforce scoping. A dialog adds no request and no URL a child could mistype or share.
-- The card becomes a full-width button (≥44px) that opens the dialog; Radix supplies focus trap, Escape, focus return and `aria-modal`.
-  Cards stay readable without it: the compact progress bars remain visible, the dialog adds the description, per-objective counts, the reward
-  and the location the quest belongs to.
+- The card gets a full-width "Quest details" button (≥44px) as its last row (`QuestCard` takes an optional `action` slot). A whole-card button is
+  not used because a card holds progress bars and would nest block content inside a button. Radix supplies focus trap, Escape, focus return and
+  `aria-modal`. The compact progress bars stay visible; the dialog shows the description, per-objective counts, the reward and the location.
 - The location comes from the chapter's authored `locations[].questKey` (pure helper `findQuestLocation` in `quest-board.ts`). It links to the
   location page only when `locationHasPage` says one exists (ADR 0015).
 - Only plain serialisable props cross to the client component; the dialog holds open/closed state locally and nothing is persisted.
