@@ -94,3 +94,37 @@ The assets that were created before the build were not found in the repo: it hol
 3. **Parent two-factor for the pilot.** Recommended: skip it. Email verification plus strong passwords are enough for a small pilot.
 4. **Error tracking.** Recommended: Vercel logs only for the pilot. A vendor would need its own privacy review.
 5. **Start with slice A?** Confirm the order above, or say which slice should go first.
+
+## Questions to answer before work starts
+
+Answer inline (edit this file or reply in the chat). The ones marked **first** block the first slice.
+
+**Assets** (needed for the art list and slice E)
+
+1. **First:** where are the assets that were created before the build? The repo has none. Commit them to a branch (for example under `design/incoming/`).
+2. What formats are they (SVG, PNG, WebP, audio files)? At what sizes?
+3. Who made them, and does the project own the rights? Is there a licence or credit line to record?
+4. Which items from the art list do they already cover, and which are still missing?
+
+**Email provider** (slice A)
+
+5. **First:** is Resend the provider, or Postmark or another?
+6. **First:** which sending domain and from-address will mail come from (for example `no-reply@<your domain>`)? Can the domain's DNS be edited for SPF, DKIM and DMARC?
+7. Who creates the provider account and a sandbox API key for the smoke test?
+
+**Privacy and legal** (slice C)
+
+8. Where are the families: US only (COPPA), or EU and UK too (GDPR and the Age Appropriate Design Code)?
+9. Is a lawyer or privacy advisor engaged for the COPPA review? Legal lead time is long, so this should start early.
+10. Do photos on chore submissions stay out of the pilot (recommended)?
+
+**Security and operations** (slices B and H)
+
+11. Parent two-factor for the pilot: skip it (recommended) or include it?
+12. Error tracking: Vercel logs only (recommended) or a vendor, which would need its own privacy review?
+13. Do the Vercel and Supabase accounts and the production domain exist yet, and who owns them?
+14. Roughly how many pilot families, and when should the pilot start?
+
+**Order**
+
+15. Start with slice A as listed, or put another slice first?
