@@ -110,6 +110,12 @@ is refused (`invalidState`, no attempt row) while its prerequisite objective is 
 puzzle that belongs to no ACTIVE quest used to be playable "with no progress", which would have paid out and been marked solved for good while its objective stayed open.
 Puzzles that belong to no quest objective at all are still playable. Rewards for each stage, the quest and the chapter use the existing bundles; nothing is spent.
 
+## Campaign completion (ADR 0022)
+
+`adventureFinished(statuses)` (pure, `src/game/engine/unlock.ts`) is true when an adventure has chapters and every one is COMPLETED; a placeholder can never be, so an adventure cannot finish while a chapter is unbuilt.
+`getAdventureState` returns it as `campaignComplete` (display only, not stored). `evaluateChapterCompletion` calls `notifyIfAdventureFinished` in the same transaction: one `ADVENTURE_COMPLETED` notification per parent,
+deduplicated by `adventure-complete:{childId}:{adventureId}`, text limited to the child's display name and the adventure title.
+
 ## Unlocking, ensure step and item gates (ADR 0019)
 
 - A chapter unlocks when all `unlock.requires` hold (`CHAPTER_COMPLETED`, `ITEM`, `QUEST_COMPLETED`). `unlockEligibleChapters` runs after a quest or chapter

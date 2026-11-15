@@ -73,7 +73,7 @@ Depends on: Phase 4.
 - ✅ Shipwreck Cove (functional, placeholder art): ship gate, salvage objectives, gated Wreck and the `pair-match` repair puzzle (ADR 0019); grandfathering and an idempotent ensure step for existing households
 - ✅ Skull Reef (functional, placeholder art): voyager ship gate and cove economy, chart pieces, the `route-plan` puzzle and a three-stage Kraken built from chained puzzle objectives with no cost (ADR 0020)
 - ✅ Whispering Jungle (functional, placeholder art): artifacts as held items found by chained chore objectives, the `clue-order` puzzle, a multi-item location gate (`requiresItems`) and a two-step temple; no ship gate because the captain ship is out of economic reach (ADR 0021)
-- ⬜ Treasure Island (final treasure, campaign completion rewards)
+- ✅ Treasure Island (functional, placeholder art): legendary ship gate (1,000 coins) with the economy rebalanced so it is reachable, the dig and three guards, the 1,000-coin finale reward with treasure and wearable flag, campaign-complete card and a once-only parent notification (ADR 0022). **Phase 5 content is complete.**
 - 🟡 Additional puzzle types in `src/game/puzzles` (`pair-match` ✅, `route-plan` ✅, `clue-order` ✅)
 
 ## Phase 6 — MVP Testing and Launch Preparation ⬜
