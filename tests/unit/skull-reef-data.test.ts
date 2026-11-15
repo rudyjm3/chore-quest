@@ -113,14 +113,6 @@ describe("Skull Reef theme data", () => {
       expect(ids.has(item.iconKey ?? ""), item.key).toBe(true);
     }
   });
-
-  it("Treasure Island stays an empty placeholder", () => {
-    const island = pirateAdventure.chapters.find((c) => c.key === "treasure-island")!;
-    expect(island.status).toBe("PLACEHOLDER");
-    expect(island.quests).toEqual([]);
-    expect(island.puzzles).toEqual([]);
-    expect(island.config.locations).toEqual([]);
-  });
 });
 
 describe("puzzleWaitingFor", () => {

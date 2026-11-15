@@ -255,7 +255,7 @@ describe("Whispering Jungle: the temple in two steps", () => {
 });
 
 describe("Whispering Jungle: the whole chapter", () => {
-  it("completes, pays its reward once, and leaves Treasure Island as an empty placeholder", async () => {
+  it("completes, pays its reward once, and Treasure Island then needs only the legendary ship", async () => {
     const h = await atTheJungle();
     const kid = h.kids[0]!;
     await findArtifacts(h, kid);
@@ -272,6 +272,7 @@ describe("Whispering Jungle: the whole chapter", () => {
     expect(locked.status).toBe("LOCKED");
     expect(locked.missingRequirements).toEqual([
       { type: "ITEM", itemKey: "map-fragment", quantity: 5 },
+      { type: "ITEM", itemKey: "ship-legendary", quantity: 1 },
     ]);
 
     const before = await getWallets(db, kid.child.id);
@@ -286,12 +287,12 @@ describe("Whispering Jungle: the whole chapter", () => {
     expect(after.XP).toBe(before.XP + 300);
     expect((await held(kid))["map-fragment"]).toBe(5);
 
+    // The fifth fragment arrived with the claim; only the ship is still missing (ADR 0022).
     const island = await statusOf(kid.ctx, "treasure-island");
-    expect(island.status).toBe("UNLOCKED");
-    expect(island.definitionStatus).toBe("PLACEHOLDER");
-    expect(island.quests).toEqual([]);
-    expect(island.puzzles).toEqual([]);
-    expect(island.locations).toEqual([]);
+    expect(island.status).toBe("LOCKED");
+    expect(island.missingRequirements).toEqual([
+      { type: "ITEM", itemKey: "ship-legendary", quantity: 1 },
+    ]);
   });
 });
 

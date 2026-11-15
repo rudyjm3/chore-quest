@@ -101,4 +101,14 @@ export const pirateAchievements: AchievementDefinitionInput[] = [
     rewardCoins: 50,
     rewardXp: 100,
   },
+  {
+    key: "pirate.legend",
+    hint: "Find what Blackbeard hid.",
+    title: "Legend of Blackbeard Bay",
+    description: "Find Blackbeard's treasure and finish the adventure.",
+    iconKey: "achievement.legend",
+    criteria: { type: "CHAPTER_COMPLETED", chapterKey: "treasure-island" },
+    rewardCoins: 0,
+    rewardXp: 200,
+  },
 ];

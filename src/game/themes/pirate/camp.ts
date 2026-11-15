@@ -7,5 +7,6 @@ export const pirateCrewCampScene = crewCampSceneSchema.parse({
     head: { x: 50, y: 14, label: "Head" },
     sail: { x: 50, y: 40, label: "Sail" },
     deck: { x: 50, y: 76, label: "Deck" },
+    flag: { x: 78, y: 12, label: "Flag" },
   },
 });

@@ -1436,6 +1436,7 @@ enum NotificationKind {
   SUBMISSION_REJECTED
   REDEMPTION_REQUESTED
   REDEMPTION_RESOLVED
+  ADVENTURE_COMPLETED
 }
 
 /// In-app notification for exactly one recipient (a parent user or a child). No email, no push.

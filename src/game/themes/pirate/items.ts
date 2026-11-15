@@ -120,6 +120,17 @@ export const pirateItems: ItemDefinitionInput[] = [
     config: { chapterKey: "whispering-jungle" },
   },
   {
+    key: "blackbeards-treasure",
+    name: "Blackbeard's Treasure",
+    description:
+      "The lost treasure of Blackbeard Bay, found at last. Only one captain can say they have it.",
+    type: "COLLECTIBLE",
+    rarity: "LEGENDARY",
+    iconKey: "item.blackbeards-treasure",
+    maxQuantity: 1,
+    config: { chapterKey: "treasure-island" },
+  },
+  {
     key: "cove-pearl",
     name: "Cove Pearl",
     description: "A glowing pearl from the hidden cove. Only sharp-eyed captains find it.",
@@ -218,5 +229,15 @@ export const pirateItems: ItemDefinitionInput[] = [
     iconKey: "cosmetic.captain-hat",
     maxQuantity: 1,
     config: { costCoins: 60, slot: "head" },
+  },
+  {
+    key: "cosmetic-blackbeards-flag",
+    name: "Blackbeard's Flag",
+    description: "A flag only the finder of the treasure may fly. Not for sale.",
+    type: "COSMETIC",
+    rarity: "LEGENDARY",
+    iconKey: "cosmetic.blackbeards-flag",
+    maxQuantity: 1,
+    config: { slot: "flag" },
   },
 ];

@@ -11,6 +11,7 @@ const KIND_ICON: Record<string, string> = {
   SUBMISSION_REJECTED: "🔁",
   REDEMPTION_REQUESTED: "🎁",
   REDEMPTION_RESOLVED: "🎉",
+  ADVENTURE_COMPLETED: "🏴‍☠️",
 };
 
 /**

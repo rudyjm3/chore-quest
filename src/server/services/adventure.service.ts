@@ -10,6 +10,7 @@ import {
   parseObjectiveConfig,
   puzzleItemGates,
   unmetItemGates,
+  adventureFinished,
 } from "@/game/engine";
 import { getPuzzleVerifier } from "@/game/puzzles";
 import {
@@ -32,6 +33,7 @@ import {
   unlockEligibleChapters,
 } from "./chapter-unlock.service";
 import { grantItem, inventoryByItemKey } from "./inventory.service";
+import { notifyParents } from "./notification.service";
 import { getWallets, postLedgerEntry } from "./reward.service";
 
 type Tx = Prisma.TransactionClient;
@@ -143,6 +145,10 @@ export async function getAdventureState(db: DbClient, ctx: ChildContext, adventu
       themeKey: adventure.themeKey,
     },
     started: Boolean(progress),
+    /** Every chapter of the adventure is completed (ADR 0022). Display only, not stored. */
+    campaignComplete: adventureFinished(
+      adventure.chapters.map((chapter) => chapterProgressById.get(chapter.id)?.status),
+    ),
     wallets,
     level: levelForXp(wallets.XP, adventureConfig.levelThresholds),
     inventory,
@@ -397,12 +403,49 @@ export async function evaluateChapterCompletion(
     childId: params.childId,
     chapterKey: chapter.key,
   });
+  await notifyIfAdventureFinished(tx, {
+    familyId: params.familyId,
+    childId: params.childId,
+    adventureId: chapter.adventureId,
+  });
   await unlockEligibleChapters(tx, {
     familyId: params.familyId,
     childId: params.childId,
     adventureId: chapter.adventureId,
   });
   return true;
+}
+
+/**
+ * When the chapter that just completed was the last one, tell the parents once (ADR 0022). The dedupe key makes a replay
+ * or a race write one row per parent; only the child's display name and the adventure title go in the text.
+ */
+async function notifyIfAdventureFinished(
+  tx: Tx,
+  params: { familyId: string; childId: string; adventureId: string },
+) {
+  const rows = await tx.childChapterProgress.findMany({
+    where: { childId: params.childId, chapter: { adventureId: params.adventureId } },
+    select: { status: true },
+  });
+  if (!adventureFinished(rows.map((r) => r.status))) return;
+  // One connection per transaction: these reads run one after the other.
+  const child = await tx.child.findFirst({
+    where: { id: params.childId, familyId: params.familyId },
+    select: { displayName: true },
+  });
+  const adventure = await tx.adventure.findUnique({
+    where: { id: params.adventureId },
+    select: { title: true },
+  });
+  if (!child || !adventure) return;
+  await notifyParents(tx, params.familyId, {
+    kind: "ADVENTURE_COMPLETED",
+    title: `${child.displayName} finished ${adventure.title}!`,
+    entityType: "adventure",
+    entityId: params.adventureId,
+    dedupeKey: `adventure-complete:${params.childId}:${params.adventureId}`,
+  });
 }
 
 /** Child claims a completed chapter's reward bundle. Idempotent via rewardClaimedAt + source keys. */

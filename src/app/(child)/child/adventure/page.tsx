@@ -43,6 +43,18 @@ export default async function AdventurePage() {
           />
         </div>
       </div>
+      {state.campaignComplete ? (
+        <div
+          className="cq-pop rounded-3xl border-4 border-pirate-gold bg-pirate-gold/30 p-5 text-center"
+          data-testid="campaign-complete"
+        >
+          <p className="text-xl font-black">🏴‍☠️ Adventure complete!</p>
+          <p className="text-sm">
+            You found Blackbeard&apos;s treasure and finished every chapter. Legend of Blackbeard
+            Bay!
+          </p>
+        </div>
+      ) : null}
       {!state.started ? (
         <div className="flex flex-col items-center gap-4 rounded-3xl border-4 border-pirate-wood bg-pirate-parchment p-8 text-center">
           <p className="text-lg">The captain is looking for a crew. Ready to sail?</p>
