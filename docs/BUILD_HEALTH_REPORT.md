@@ -465,3 +465,31 @@ Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
 - Rope fix shipped earlier in PR #12 (no engine change); the rope category filter was dropped because planks fill first under the first-match rule.
 
 Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+
+## Phase 5, slice 3: Whispering Jungle
+
+**What changed**
+
+- ADR 0021 (committed before the implementation): no ship gate, artifacts as held items, `requiresItems`, the `clue-order` puzzle.
+- **Economy (measured, asserted):** 330 coins after the reef with only the explorer and voyager bought and every reward claimed; the 800-coin captain ship is about 470 out of reach, so the jungle opens on Skull Reef alone (as the placeholder already did) and the captain stays a shop item. No price or reward was changed.
+- **`requiresItems` gate:** location gates are now a list (`locationItemGates`, `puzzleItemGates`, `unmetItemGates`, pure); the server enforces every gate under the child lock in `submitPuzzleAnswer` and `visitLocation`, naming what is missing. `getPuzzleForChild` returns `gates` and keeps `gate`.
+- **`clue-order` puzzle:** five rule kinds, `parseConfig` enumerates all orderings and rejects zero or several solutions and keys whose sorted order is the solution; the view is the things, the sentences and the hint, never the order.
+- **Whispering Jungle content (PLAYABLE):** `follow-the-clues` (three chained artifact searches, then the ruins puzzle), `open-the-temple` (glyphs, then a 7 x 7 maze, behind the first quest), side quest `jungle-explorers`, seven locations, three items, manifest entries and SVG placeholders. Chapter reward unchanged (150 / 300 / 1 fragment). Treasure Island opens as an empty placeholder once the claim gives the fifth fragment.
+- UI: `CluePuzzle` (read clues, tap things into places, tap a place to take one back, `aria-live`); the route board's wording is now "rock" so the maze does not talk about reefs.
+
+**Test counts** (`pnpm check`): unit **204** (was 186), integration **250** (was 234). E2E **66 passed, 15 skipped** (mobile, by design; was 63 / 14) with the new `phase5-jungle.spec.ts`. `pnpm format:check` clean; no schema change and no migration.
+
+**Mutation checks** (by hand, restored): removing `lockChildRow` from `submitPuzzleAnswer` fails the ruins race test; making the gate helper ignore `requiresItems` fails four tests (closed ruins, held-now, siblings and the multi-gate cove case).
+
+**Issues met**
+
+- The Skull Reef test asserted the jungle was an empty placeholder; it now asserts it unlocks, and the empty-placeholder assertions moved to Treasure Island.
+- A `git checkout -- .` while recovering from a stopped PostgreSQL discarded uncommitted helper code once; it was re-added before anything was committed.
+
+**Known limitations / left out**
+
+- An artifact appears on the first chore of its search (engine grants per progress); clue sentences are reviewed by hand against their rules; tap-based UIs; placeholder art; attempt limits still deferred to Phase 6.
+- Children who already had the placeholder jungle unlocked keep it and get quest rows from the ensure step (tested). The captain ship is not wired to any gate.
+- Treasure Island untouched. Out of scope and untouched: real email provider, photos, `NOTIFICATION_RETENTION_DAYS`, Phase 6 items.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).

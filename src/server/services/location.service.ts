@@ -1,3 +1,4 @@
+import { locationItemGates, unmetItemGates } from "@/game/engine";
 import type { Prisma } from "@/generated/prisma/client";
 import { chapterConfigSchema, parseAdventureState, type ChapterLocation } from "@/game/schemas";
 import { lockChildRow, type DbClient } from "@/lib/db/prisma";
@@ -63,23 +64,24 @@ async function statusFor(db: Db, ctx: ChildContext, chapterKey: string, r: Resol
     select: { id: true },
   });
   if (found) return { status: "found" } as const satisfies LocationStatus;
-  const need = r.location.requiresItemKey;
-  if (need) {
-    const quantity = r.location.requiresItemQuantity;
-    const owned = await db.childInventoryItem.findFirst({
+  const gates = locationItemGates(r.location);
+  if (gates.length > 0) {
+    const held: Record<string, number> = {};
+    const rows = await db.childInventoryItem.findMany({
       where: {
         childId: ctx.childId,
         familyId: ctx.familyId,
-        quantity: { gte: quantity },
-        item: { key: need },
+        item: { key: { in: gates.map((g) => g.itemKey) } },
       },
-      select: { id: true },
+      include: { item: { select: { key: true } } },
     });
-    if (!owned)
+    for (const row of rows) held[row.item.key] = row.quantity;
+    const missing = unmetItemGates(gates, held)[0];
+    if (missing)
       return {
         status: "locked",
-        requiresItemKey: need,
-        requiresItemQuantity: quantity,
+        requiresItemKey: missing.itemKey,
+        requiresItemQuantity: missing.quantity,
       } as const satisfies LocationStatus;
   }
   return { status: "available" } as const satisfies LocationStatus;

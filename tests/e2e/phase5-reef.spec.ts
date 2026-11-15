@@ -173,7 +173,7 @@ test.describe("phase 5: Skull Reef", () => {
       await page.getByTestId("route-left").click();
       await expect(page.getByTestId("puzzle-announce")).toContainText("edge of the chart");
       await sail(page, ["right", "right"]); // (2,4) is a reef
-      await expect(page.getByTestId("puzzle-announce")).toContainText("reef is in the way");
+      await expect(page.getByTestId("puzzle-announce")).toContainText("rock is in the way");
       await expect(page.getByTestId("route-count")).toHaveText("1 move");
       await page.getByTestId("route-undo").click();
       await expect(page.getByTestId("route-count")).toHaveText("0 moves");

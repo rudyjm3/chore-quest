@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getPuzzleVerifier, listPuzzleTypes, pairMatchClientViewSchema } from "@/game/puzzles";
-import { itemGateMet, locationItemGate, puzzleItemGate } from "@/game/engine";
+import { itemGatesMet, locationItemGates, puzzleItemGates } from "@/game/engine";
 import { pirateAdventure } from "@/game/themes/pirate";
 
 const raw = {
@@ -128,29 +128,28 @@ describe("item-hold gates (never consumed)", () => {
   ];
 
   it("defaults the quantity to one and ignores locations without a gate", () => {
-    expect(locationItemGate(locations[0]!)).toBeNull();
-    expect(locationItemGate(locations[2]!)).toEqual({ itemKey: "pearl", quantity: 1 });
+    expect(locationItemGates(locations[0]!)).toEqual([]);
+    expect(locationItemGates(locations[2]!)).toEqual([{ itemKey: "pearl", quantity: 1 }]);
   });
 
-  it("finds the gate by puzzle key", () => {
-    expect(puzzleItemGate(locations, "p")).toEqual({ itemKey: "plank", quantity: 4 });
-    expect(puzzleItemGate(locations, "unknown")).toBeNull();
+  it("finds the gates by puzzle key", () => {
+    expect(puzzleItemGates(locations, "p")).toEqual([{ itemKey: "plank", quantity: 4 }]);
+    expect(puzzleItemGates(locations, "unknown")).toEqual([]);
   });
 
   it("is met only while enough are held", () => {
-    const gate = puzzleItemGate(locations, "p");
-    expect(itemGateMet(gate, { plank: 3 })).toBe(false);
-    expect(itemGateMet(gate, {})).toBe(false);
-    expect(itemGateMet(gate, { plank: 4 })).toBe(true);
-    expect(itemGateMet(null, {})).toBe(true);
+    const gates = puzzleItemGates(locations, "p");
+    expect(itemGatesMet(gates, { plank: 3 })).toBe(false);
+    expect(itemGatesMet(gates, {})).toBe(false);
+    expect(itemGatesMet(gates, { plank: 4 })).toBe(true);
+    expect(itemGatesMet([], {})).toBe(true);
   });
 
   it("the pirate Wreck needs four salvage planks and the explorer gates the chapter", () => {
     const cove = pirateAdventure.chapters.find((c) => c.key === "shipwreck-cove")!;
-    expect(puzzleItemGate(cove.config.locations, "repair-puzzle")).toEqual({
-      itemKey: "salvage-plank",
-      quantity: 4,
-    });
+    expect(puzzleItemGates(cove.config.locations, "repair-puzzle")).toEqual([
+      { itemKey: "salvage-plank", quantity: 4 },
+    ]);
     expect(cove.config.unlock.requires).toContainEqual({
       type: "ITEM",
       itemKey: "ship-explorer",

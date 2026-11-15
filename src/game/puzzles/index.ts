@@ -10,3 +10,4 @@ export {
   type RoutePlanCell,
   type RoutePlanMove,
 } from "./route-plan";
+export { clueOrderClientViewSchema, type ClueOrderClientView } from "./clue-order";

@@ -55,6 +55,10 @@ export const chapterLocationSchema = z.object({
   /** The child must currently hold at least `requiresItemQuantity` of this item to use the location (ADR 0014, 0019). Never consumed. */
   requiresItemKey: z.string().optional(),
   requiresItemQuantity: z.number().int().min(1).default(1),
+  /** More items the child must hold at the same time (ADR 0021); together with the pair above, all must be held. */
+  requiresItems: z
+    .array(z.object({ itemKey: z.string(), quantity: z.number().int().min(1).default(1) }))
+    .default([]),
   /** One-time item reward granted on the first visit, through grantItem (ADR 0014). */
   reward: itemRewardSchema.optional(),
 });

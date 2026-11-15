@@ -1,7 +1,15 @@
 # Next steps and not-yet-done items
 
-Single list of what was deliberately left out of merged work, so it is not missed. Updated after Phase 5 slice 2 (Skull Reef).
+Single list of what was deliberately left out of merged work, so it is not missed. Updated after Phase 5 slice 3 (Whispering Jungle).
 Status key: ⬜ not started · 🟡 partial · ⛔ blocked on a decision or an external account.
+
+## Done in Phase 5 slice 3 (Whispering Jungle)
+
+Whispering Jungle is playable (placeholder art, ADR 0021). Artifacts are plain held items (`jade-idol`, `stone-mask`, `sun-key`) found by three chained chore objectives; the new
+`requiresItems` location key makes the Ancient Ruins need all three at once; the new `clue-order` puzzle (clues with exactly one solution, rule-checked, nothing stored)
+sets them in order; the temple is two chained puzzle stages (pair-match, route-plan) behind that quest. There is **no ship gate**: a child who buys only the explorer and the
+voyager holds 330 coins after the reef, so the 800-coin captain ship is about 470 coins out of reach and stays a shop purchase. Treasure Island opens (after the claim gives the
+fifth map fragment) as an empty placeholder.
 
 ## Done in Phase 5 slice 2 (Skull Reef)
 
@@ -56,12 +64,15 @@ The Home Port slice before it: quest board, crew camp, lighthouse hints, Pip dia
 ## What comes next (roadmap order)
 
 1. **Phase 4 remainder:** only the interactive side-mission dialog layer and real artwork/audio are left (everything keeps going through the asset manifests). Re-measure bundles when real artwork lands: placeholder SVGs are ~1 KB, so image optimization has not been needed yet.
-2. **Phase 5 — Complete Pirate Campaign:** Shipwreck Cove ✅, Skull Reef ✅. Remaining: Whispering Jungle (clues and artifacts), Treasure Island, and any further puzzle types in `src/game/puzzles`.
+2. **Phase 5 — Complete Pirate Campaign:** Shipwreck Cove ✅, Skull Reef ✅. Remaining: Treasure Island (final treasure and campaign completion), and any further puzzle types in `src/game/puzzles`.
 3. **Phase 6 — MVP testing and launch preparation:** full parent/child e2e journeys and an approval-pipeline load test; security review (CSP, edge rate limiting, dependency audit); WCAG 2.2 AA audit; mobile performance budget and PWA; privacy/COPPA legal review with retention/deletion flows and parental-consent copy (the photo decision belongs here); pilot with a few families; Vercel + Supabase production setup. The real email provider must be in place before the pilot.
 
-Suggested immediate order: Whispering Jungle (clues and artifacts). It may need a clue/artifact puzzle type and a decision on whether collecting artifacts is a new objective
-kind or more held items; a ship gate for it (`ship-captain`, 800 coins, needs Skull Reef completed) is already in the catalogue but not wired as an unlock. If a real cost is ever wanted
-(spending items to win a challenge) it needs its own ADR for an inventory debit path first.
+Suggested immediate order: Treasure Island (the final chapter: the map fragments come together, campaign completion rewards). Decide first what the final reward is and whether it needs
+the captain or legendary ship; the economy would then need rebalancing (the captain is 470 coins out of reach after the reef; see ADR 0021). If a real cost is ever wanted (spending items to win a challenge) it needs
+its own ADR for an inventory debit path first.
+
+Known limitations from slice 3: an artifact appears on the first chore of its search (the engine grants per unit of progress and clamps at the item cap); clue sentences are checked by hand
+against their rules (only the rule is enforced); the clue and route UIs are tap/button based; the route board still speaks of a ship and a sea chart inside the jungle; failed attempts remain unbounded rows (Phase 6).
 
 Known limitations from slice 2: the route board is arrow-button only (no drag or swipe); the Kraken has no fail state or cost by design; failed attempts are still unbounded rows
 (Phase 6 rate limiting); the achievement "Master Shipwright" only reaches children who solve the repair puzzle after this change; art is placeholder.
