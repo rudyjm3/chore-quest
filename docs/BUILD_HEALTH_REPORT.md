@@ -340,3 +340,53 @@ Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
 - Out of scope and untouched: real email provider, photos on submissions, `NOTIFICATION_RETENTION_DAYS`.
 
 Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+
+## Home Port polish slice (Phase 4)
+
+**What changed**
+
+- ADR 0018 (quest detail dialog, crew-camp scene driven by theme anchors, plus a measured amendment), committed before its implementation.
+- **Quest detail on tap**: each quest card on `/child/port/quest-board` has a "Quest details" button (≥44px) that opens a Radix dialog with the
+  description, every step with progress, the reward and the location the quest belongs to (linked when that location has a page). Data is what the
+  board page already loaded for the signed-in child (`getAdventureState`); no new table, action or write. Escape closes it and focus returns to the button.
+- **Crew-camp ship scene**: `/child/port/crew-camp` shows the ship with the equipped item in each slot (head, sail, deck) above the unchanged picker.
+  Slot anchors are theme data (`src/game/themes/pirate/camp.ts`, `getCrewCampScene`), art goes through the manifest (four new placeholder items, one
+  new SVG each), the scene component is theme-neutral and read-only; `equipCosmetic` is untouched. The ship sways on a decorative inner element and the
+  animation is off under `prefers-reduced-motion`.
+- **Bundle pass**: see numbers below. Only the quest detail dialog is code-split.
+
+**Test counts** (`pnpm check`): see the final numbers below. E2E `phase4-port.spec.ts` now also covers the quest detail (open, steps, reward, ≥44px, Escape,
+focus return) and the ship scene (hat shown after wearing, cleared after taking it off).
+
+**Measurements** (production build, headless Chromium at 390px, cold cache per page, gzip transfer size of `Script` requests; each row is one load):
+
+| Page                                            | Before (main) | Dialog loaded eagerly | Dialog lazy (kept) |
+| ----------------------------------------------- | ------------: | --------------------: | -----------------: |
+| `/child`                                        |      170.0 KB |              170.1 KB |           170.1 KB |
+| `/child/adventure` (map)                        |      173.7 KB |              173.7 KB |           173.7 KB |
+| `/child/adventure/home-port`                    |      177.5 KB |              177.6 KB |           177.6 KB |
+| `/child/adventure/parrot-island`                |      177.5 KB |              177.6 KB |           177.6 KB |
+| `/child/adventure/parrot-island/compass-shrine` |      171.9 KB |              172.0 KB |           172.0 KB |
+| `/child/port/quest-board`                       |      168.1 KB |              182.8 KB |       **164.5 KB** |
+| `/child/port/crew-camp`                         |      173.7 KB |              173.7 KB |           173.7 KB |
+
+- The eager dialog cost the quest board +14.7 KB, so it was split out; the lazy version is 18.3 KB below the eager one and 3.6 KB below the old board.
+  The cost moves to the first tap (one small chunk, not timed separately).
+- **Not changed, on purpose:** chapter pages are 170–178 KB, almost all the shared framework/app bundle; the shrine page adds ~2 KB over `/child`, so splitting
+  chapter code would save nothing measurable. Images are placeholder SVGs of ~0.5–1 KB (`next/image` does not optimize SVG and should not); the map page loads
+  one image of 987 bytes and the crew camp one of 982 bytes. Real artwork should be re-measured when it lands. (`next build` in Next 16 prints no per-route sizes,
+  so the numbers come from the browser; the script is a throwaway and not committed.)
+- LCP and server timing were not measured; only transferred JS and image bytes were.
+
+**Known limitations / left out**
+
+- **Puzzle attempt limits (scope item 2): not built, deliberately.** The only puzzle is a four-symbol game puzzle with a cosmetic-grade reward and a lockout would
+  punish young children for guessing; the unbounded attempt rows are real but better handled with edge rate limiting (Phase 6) or when Phase 5 puzzles have bigger answer
+  spaces. Reasoning and the intended design are in `docs/NEXT_STEPS.md` item 3.
+- Quest detail is a dialog, not a route, so it cannot be deep-linked (ADR 0018).
+- Slot anchors are hand-placed for the placeholder ship and will need retuning with real art.
+- E2E dialog target sizes are checked on the desktop project only (the mutating flow is desktop-only by design); the CSS is viewport-independent (`min-h-11`).
+- A first run of the e2e caught the Close button at 42.3px: the dialog was measured mid zoom-in animation (scaled). The test now waits for the animation to finish; the button is `min-h-11`.
+- Out of scope and untouched: real email provider, photos on submissions, `NOTIFICATION_RETENTION_DAYS`, Phase 5 chapters.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).

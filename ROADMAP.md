@@ -63,8 +63,8 @@ Depends on: Phase 3 pipeline stability, production artwork.
 - 🟡 Interactive quests + side missions (engine done; dialog/animation layer pending)
 - 🟡 Collectibles & inventory screen ✅ (read-only treasure chest); ship upgrades/cosmetics shop ✅ (supply shop); equipping cosmetics ✅ (crew camp)
 - ✅ Zustand-backed scene state, CSS/SVG feedback animation (reduced-motion aware) and an opt-in sound toggle, all client-only (ADR 0016)
-- 🟡 Home Port polish: lighthouse once per day ✅ (ADR 0017); quest detail on tap and a visual crew-camp scene ⬜
-- ⬜ Lazy-loaded chapter bundles and image optimization pass
+- ✅ Home Port polish: lighthouse once per day (ADR 0017); quest detail dialog on the quest board and a dressed-up crew-camp ship scene (ADR 0018)
+- ✅ Bundle/image pass measured: only the quest detail dialog is loaded lazily (quest board first-load JS −18 KB); chapter pages and the (SVG, ~1 KB) images have nothing worth splitting yet — see `docs/BUILD_HEALTH_REPORT.md`
 
 ## Phase 5 — Complete Pirate Campaign ⬜
 

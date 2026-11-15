@@ -33,3 +33,9 @@ through the asset manifest (new placeholder entries for the four wearable items)
 
 - Quest detail is not deep-linkable. If that is wanted later (share a quest with a parent), a route can reuse the same detail component.
 - Anchors are hand-placed per theme; real artwork may need them retuned, which is a theme-file edit only.
+
+## Amendment: lazy-loaded dialog (measured)
+
+Importing Radix Dialog on the quest board added ~14.7 KB (gzip, transferred) to its first load (168.1 → 182.8 KB). `QuestDetailDialog` is therefore a
+tiny client button that loads `quest-detail-content.tsx` with `next/dynamic` on the first tap and returns focus to the button on close. Result: 164.5 KB on
+first load. The cost moves to the first tap (one small chunk).

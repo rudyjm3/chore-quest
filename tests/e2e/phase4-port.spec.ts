@@ -52,6 +52,8 @@ test.describe("phase 4: Home Port quest board and crew camp", () => {
     await expect(detail).toBeVisible();
     await expect(detail.getByTestId("quest-detail-objective").first()).toBeVisible();
     await expect(detail.getByTestId("quest-detail-reward")).toContainText("Reward:");
+    // The dialog zooms in; measure the target once it has settled (a mid-animation scale reads smaller).
+    await detail.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     const closeButton = detail.getByRole("button", { name: "Close" });
     expect((await closeButton.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await child.keyboard.press("Escape");
