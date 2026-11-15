@@ -99,6 +99,7 @@ export function SequencePuzzle({
     <section
       className="space-y-4 rounded-3xl border-4 border-pirate-wood bg-pirate-parchment p-4"
       data-testid="puzzle"
+      data-puzzle-type="sequence-match"
       data-solved={done}
       aria-labelledby={`puzzle-${puzzleId}`}
     >

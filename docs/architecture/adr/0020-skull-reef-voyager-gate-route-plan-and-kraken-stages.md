@@ -65,7 +65,7 @@ and purchases that re-evaluate unlocks already exist (ADR 0014, 0015, 0019). Thi
 
 ### 3. The Kraken: three chained puzzle stages, no cost
 
-- Two main quests in Skull Reef: `navigate-the-reef` (chart pieces from approved chores, then the `route-plan` puzzle `reef-chart-puzzle`) and
+- Two main quests in Skull Reef: `navigate-the-reef` (chart pieces from approved chores, then the `route-plan` puzzle `reef-chart-puzzle`; the chart table's item gate does the ordering, as at the wreck, so the puzzle objective needs no `requiresObjectiveKey` and the page shows "needs 5 × Reef Chart Piece (N more)" rather than a vaguer "not ready") and
   `defeat-the-kraken` (`requiresQuestKey: navigate-the-reef`). The Kraken quest has one `COMPLETE_PUZZLE` objective per stage, each with
   `requiresObjectiveKey` on the previous one: `kraken-tentacles` (a `sequence-match`), `kraken-weak-points` (a `pair-match`) and `kraken-escape`
   (a `route-plan`). **No new objective type, no new reward path**: stage rewards are the existing per-puzzle bundles, the quest and chapter bundles do

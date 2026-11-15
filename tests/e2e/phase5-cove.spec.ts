@@ -198,14 +198,17 @@ test.describe("phase 5: Shipwreck Cove", () => {
       await page.getByRole("button", { name: "Claim chapter reward" }).click();
       await expect(page.getByText("Chapter reward claimed")).toBeVisible();
 
+      // Skull Reef needs the voyager ship as well (ADR 0020): finishing the cove alone leaves it locked.
       await page.goto("/child/adventure");
-      await expect(
-        page.getByTestId("chapter-list").locator("li", { hasText: /^4\. Skull Reef/ }),
-      ).not.toContainText("Finish");
+      const reefRow = page
+        .getByTestId("chapter-list")
+        .locator("li", { hasText: /^4\. Skull Reef/ });
+      await expect(reefRow).toContainText("Need Voyager Ship");
+      await expect(reefRow).not.toContainText("Finish");
       const skull = await db.childChapterProgress.findFirstOrThrow({
         where: { childId: child.id, chapter: { key: "skull-reef" } },
       });
-      expect(skull.status).toBe("UNLOCKED");
+      expect(skull.status).toBe("LOCKED");
     } finally {
       await db.family.delete({ where: { id: family.id } }).catch(() => undefined);
       await db.user.delete({ where: { id: user.id } }).catch(() => undefined);

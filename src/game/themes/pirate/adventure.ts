@@ -471,11 +471,8 @@ const definition: AdventureDefinitionInput = {
               title: "Plan a safe route through the reef",
               type: "COMPLETE_PUZZLE",
               targetCount: 1,
-              config: {
-                eligibility: {},
-                puzzleKey: "reef-chart-puzzle",
-                requiresObjectiveKey: "collect-chart-pieces",
-              },
+              // No `requiresObjectiveKey`: the chart table's item gate (5 pieces held) is the ordering, as at the wreck.
+              config: { eligibility: {}, puzzleKey: "reef-chart-puzzle" },
             },
           ],
         },
