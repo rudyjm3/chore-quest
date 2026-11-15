@@ -279,9 +279,9 @@ const definition: AdventureDefinitionInput = {
           title: "Salvage the Wreck",
           description:
             "Gather planks and rope from the wreck, then repair the ship. Planks come first from any approved chore; once you have enough, the next chores become rope.",
-          rewardCoins: 40,
-          rewardXp: 80,
-          config: { rewards: { coins: 40, xp: 80, items: [] } },
+          rewardCoins: 50,
+          rewardXp: 100,
+          config: { rewards: { coins: 50, xp: 100, items: [] } },
           objectives: [
             {
               key: "gather-planks",
@@ -336,7 +336,7 @@ const definition: AdventureDefinitionInput = {
           title: "Repair the Ship",
           type: "pair-match",
           config: {
-            rewards: { coins: 15, xp: 30, items: [] },
+            rewards: { coins: 25, xp: 50, items: [] },
             data: {
               parts: [
                 { key: "hull", label: "Leaky hull" },
@@ -373,11 +373,16 @@ const definition: AdventureDefinitionInput = {
       locationName: "Skull Reef",
       status: "PLACEHOLDER",
       config: {
-        unlock: { requires: [{ type: "CHAPTER_COMPLETED", chapterKey: "shipwreck-cove" }] },
+        unlock: {
+          requires: [
+            { type: "CHAPTER_COMPLETED", chapterKey: "shipwreck-cove" },
+            { type: "ITEM", itemKey: "ship-voyager", quantity: 1 },
+          ],
+        },
         completion: { requiresQuestKeys: [] },
         rewards: { coins: 125, xp: 250, items: [{ itemKey: "map-fragment", quantity: 1 }] },
         mapMarker: { x: 66, y: 40 },
-        hint: "Something spooky lies beyond the fog. Finish the cove first.",
+        hint: "Something spooky lies beyond the fog. Finish the cove, then sail there in the Voyager Ship from the supply shop.",
         sceneAssetKey: "scene.skull-reef",
         locations: [],
       },
