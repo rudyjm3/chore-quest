@@ -69,7 +69,7 @@ Shipwreck Cove (chapter 3) is the first chapter after Parrot Island to become pl
 
 - Chapter 4 and later need no new engine code for item-gated unlocks; a purchase is enough.
 - `requiresItemQuantity` is a new config key (documented in `docs/gameplay/GAME_ENGINE.md`); older config without it behaves as before (quantity 1).
-- The ensure step adds a few reads to each approval for children with unlocked chapters. They are indexed by `childId`; measured in the build health report.
+- The ensure step adds four reads to each approval (enrolments, the child's reached chapters, those chapters with their quests, the child's quest rows) when nothing is missing, and no writes. The count is stated in the build health report; no timing was measured.
 - A child who owns the explorer ship but was already past chapter 3 is unaffected; one who has not bought it and is still `LOCKED` needs it.
 - Salvage that is only held, never spent, means the quantity gate is satisfied for good once earned. That is intended (the first thing to
   reconsider if a later chapter needs a real cost is a separate ADR for an inventory debit path).

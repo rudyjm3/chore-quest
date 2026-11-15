@@ -65,6 +65,7 @@ the pirate wording lives in `src/game/themes/pirate/achievements.ts`.
 ## Home Port keys (chapter data)
 
 - `chapterConfig.hint` — spoiler-free nudge shown by the lighthouse (`lighthouseHint`: hint of the furthest playable chapter, else the next locked one).
+- `chapterConfig.locations[].requiresItemQuantity` (integer ≥ 1, default 1) — with `requiresItemKey`, the child must currently hold at least this many. Held, never consumed (ADR 0019). Enforced for `reward` locations by `visitLocation` and for `puzzle` locations by `submitPuzzleAnswer` (pure helpers in `src/game/engine/location-gate.ts`); `getPuzzleForChild` returns `gate: { itemKey, quantity, met }` for display.
 - `chapterConfig.locations[].requiresItemKey` and `.reward` — a place the child must hold an item for, with a one-time item reward on first visit (`location.service`, ADR 0014). Item rewards only; the key is per child and place.
 - Item `config.slot` — the slot a wearable item fits (`head`, `sail`, `deck`, ...). The crew camp stores `{ equipped: { slot: itemKey } }` in `child_adventure_progress.state` (ADR 0013); slots are an open vocabulary defined by item data.
 - NPC dialogue (`npcDialogueSchema`, `src/game/schemas/dialogue.ts`): lines per situation (`greeting`, `quest-complete`, `low-supplies`) plus `lowSupplies: { itemKey, below }`. `selectLine` is pure and picks by situation and a day seed; no free text and no child data.
@@ -77,7 +78,27 @@ Verifier feedback is theme-neutral and never says how close an attempt was.
 
 A puzzle `type` maps to a `PuzzleVerifier` in `src/game/puzzles/registry.ts`. The client submits an
 answer; the server parses the stored config and verifies. Completed attempts are unique per child/puzzle
-(partial index). Current type: `sequence-match` (`{ symbols, sequence, hint }`).
+(partial index). Current types:
+
+- `sequence-match` (`{ symbols, sequence, hint }`). Client view: `symbols`, `hint`. Answer `{ sequence: string[] }`.
+- `pair-match` (`{ parts: [{key,label}], tools: [{key,label}], pairs: { partKey: toolKey }, hint }`, ADR 0019): match every part to its tool, one
+  tool per part, 2 to 8 parts (five parts = 120 answers). Client view: `parts`, `tools` (sorted by key) and `hint`, never `pairs`. Answer
+  `{ pairs: { partKey: toolKey } }`; anything incomplete, duplicated, unknown or malformed is simply "not correct". `parseConfig` rejects a config whose parts, in
+  the listed order, would line up with the sorted tools (that order would spell out the answer).
+
+The submit action sends `sequence-match` answers as repeated `sequence` fields and other types as one JSON `answerJson` field (2000 characters at most);
+the verifier validates the shape.
+
+## Unlocking, ensure step and item gates (ADR 0019)
+
+- A chapter unlocks when all `unlock.requires` hold (`CHAPTER_COMPLETED`, `ITEM`, `QUEST_COMPLETED`). `unlockEligibleChapters` runs after a quest or chapter
+  completion, a reward claim, enrolment **and any purchase** (so an item requirement such as the explorer ship unlocks at the moment of buying). It only looks at
+  `LOCKED` chapters, so unlocks are never revoked when requirements change later.
+- **Ensure step** (`ensureChapterProgress`, `src/server/services/chapter-unlock.service.ts`): for every chapter the child has reached, create the missing
+  `quest_progress` rows (a quest without `requiresQuestKey`, or whose prerequisite quest is done) as ACTIVE and the missing `objective_progress` rows of ACTIVE quests.
+  It never changes an existing row, never reopens a CLAIMED quest and never touches LOCKED chapters. It runs at the end of every unlock evaluation, at the start of
+  `applyCompletionToQuests`, in `submitPuzzleAnswer`, and from the chapter pages (a lock-free look first; the lock and the write happen only when something is missing).
+  This is how theme data can grow (a placeholder chapter gaining quests) without a data migration.
 
 ## Rendering
 

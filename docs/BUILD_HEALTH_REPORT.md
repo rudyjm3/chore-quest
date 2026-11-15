@@ -390,3 +390,47 @@ focus return) and the ship scene (hat shown after wearing, cleared after taking 
 - Out of scope and untouched: real email provider, photos on submissions, `NOTIFICATION_RETENTION_DAYS`, Phase 5 chapters.
 
 Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
+
+## Phase 5, slice 1: Shipwreck Cove
+
+**What changed**
+
+- ADR 0019 (committed before any implementation): the ship gate and grandfathering, the `pair-match` puzzle type, item-hold gating without consuming items, the idempotent ensure step.
+- **Chapter 3 is playable** (placeholder art): needs Parrot Island completed and one `ship-explorer`; the map's locked screen names the missing ship ("Need Explorer Ship") and the chapter hint was rewritten to match. Main quest `salvage-the-wreck` (4 planks from any chore, 3 rope coils from hygiene/school/pet-care chores, repair the ship), side quest `tide-pool-treasures`, locations Salvage Yard, Tide Pools, The Wreck and a lagoon, two new items and three manifest entries with SVG placeholders.
+- **`pair-match` puzzle** (`src/game/puzzles/pair-match.ts`): five parts to five tools (120 answers), `toClientView` without the answer, vague feedback, config validation that also rejects a part order that would line up with the sorted tool list. One unit test caught exactly that leak in the first draft of the pirate data (the answer was alphabetical), so the check was added to `parseConfig` and the parts were reordered.
+- **Item-hold gating:** new `requiresItemQuantity` location key (default 1). `submitPuzzleAnswer` re-checks it on the server under the child lock and writes no attempt row when it fails; `visitLocation` uses the same quantity; salvage is never consumed and no debit path was added.
+- **Purchases unlock chapters:** `purchaseItem` now re-evaluates unlocks in its own transaction. The unlock/activation code moved to `chapter-unlock.service.ts` so `inventory.service` can call it without a circular import (no behaviour change for the old callers).
+- **Ensure step** (`ensureChapterProgress`): creates missing quest/objective progress rows for chapters the child has already reached; idempotent, never touches existing rows, never reopens a claimed quest, never touches locked chapters. Runs at the end of every unlock evaluation, at the start of the completion pipeline, in `submitPuzzleAnswer` and from the chapter pages (lock-free look first). It adds four reads per approval when nothing is missing and no writes (a count, not a timing).
+- UI: `PairPuzzle` (tap a part, tap its tool; a Clear button, `aria-live` announcements, reduced-motion aware through the shared dial), gated-wreck message with "N more", item display names on the locked map (`getAdventureState` returns `itemNames`).
+
+**Economy check (documented numbers)**
+
+| Moment                                           | Coins |
+| ------------------------------------------------ | ----: |
+| Parrot Island completed (reward not yet claimed) |   210 |
+| After claiming the Parrot Island reward (+75)    |   285 |
+| Explorer ship price                              |   150 |
+
+The 210 is 7 chores × 5, quests 20 + 30, the compass puzzle 10, the Home Port chapter reward 50 and achievements 10 + 25 + 30. A child who buys nothing else can afford the ship with 60 to spare, so no price or reward was changed. An integration test asserts it, so a later change to the numbers fails a test instead of stranding a child.
+
+**Test counts** (`pnpm check`): unit **156** (was 124), integration **212** (was 196). E2E **60 passed, 13 skipped** (mobile, by design; was 57 / 12) with the new `phase5-cove.spec.ts`. `pnpm format:check` clean; no schema change and no migration (puzzle `type` is a free string), so `prisma migrate diff` was not needed.
+
+**Concurrency and mutation checks** (done by hand, restored afterwards): removing `lockChildRow` from `submitPuzzleAnswer` makes the puzzle race test (8 parallel correct submissions) fail, and with the lock it passes (one attempt, rewards once). Removing the item gate fails three tests; stubbing the ensure step fails three.
+
+**Issues met**
+
+- First e2e run: `hasText: "Shipwreck Cove"` also matched Skull Reef's lock text ("Finish shipwreck cove"); the rows are now matched by their leading chapter number.
+- The answer-leak check in the e2e first matched "re**pairs**" in a location description; it now matches the word `pairs`. (The real data never contains the key.)
+- An existing integration test asserted that Shipwreck Cove unlocks as soon as Parrot Island completes; it now asserts it stays locked until the ship is bought.
+- A TypeScript regex flag (`/s`) in an e2e file broke `pnpm check` once, so it uses `[\s\S]` instead.
+
+**Known limitations / left out**
+
+- Rope needs `HYGIENE`, `SCHOOL` or `PET_CARE` approvals; a household without such tasks cannot finish the main quest (the puzzle is unaffected). Noted in `docs/NEXT_STEPS.md`.
+- The optional one-time `location.reward` for the cove was cut to keep the slice small.
+- Puzzle attempt limits stay deferred (Phase 6 edge rate limiting); failed repair attempts are one row each, unbounded.
+- A grandfathered child opening the chapter page gets their rows through a small write on that GET (service-owned, locked, idempotent, only when something is missing); the completion pipeline would heal them anyway on the next approval.
+- Placeholder art only; the pair-match UI is tap-to-assign (no drag).
+- Skull Reef, Whispering Jungle, Treasure Island and Phase 6 items untouched. Out of scope and untouched: real email provider, photos on submissions, `NOTIFICATION_RETENTION_DAYS`.
+
+Everything left out is tracked in [`docs/NEXT_STEPS.md`](NEXT_STEPS.md).
