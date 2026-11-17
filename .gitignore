@@ -57,3 +57,7 @@ next-env.d.ts
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Incoming design packages (~45 MB of generated art, rights review pending). Kept locally until the owner
+# decides where they live (git, Git LFS or elsewhere); the audit lives in design/asset-audit/.
+design/incoming/

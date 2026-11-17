@@ -1,0 +1,59 @@
+manifest_id,in_manifest,type,declared_size,current_path,placeholder,referenced_by,incoming_candidate (status),gap
+map.world,yes,background,1600x900,/assets/adventures/pirate/world-map/world-map.svg,yes,,assets/ocean_background.svg (USABLE_TEMP),candidate = clean ocean SVG only; islands and labels must be separate layers
+scene.home-port,yes,scene,1600x900,/assets/adventures/pirate/scenes/home-port.svg,yes,chapter:home-port,assets/home_port_scene.jpg (USABLE_TEMP),candidate available (needs approval)
+scene.parrot-island,yes,scene,1600x900,/assets/adventures/pirate/scenes/parrot-island.svg,yes,chapter:parrot-island,,no art candidate
+scene.skull-reef,yes,scene,1600x900,/assets/adventures/pirate/scenes/skull-reef.svg,yes,chapter:skull-reef,,no art candidate
+scene.whispering-jungle,yes,scene,1600x900,/assets/adventures/pirate/scenes/whispering-jungle.svg,yes,chapter:whispering-jungle,,no art candidate
+scene.treasure-island,yes,scene,1600x900,/assets/adventures/pirate/scenes/treasure-island.svg,yes,chapter:treasure-island,,no art candidate
+character.captain,yes,character,256x256,/assets/adventures/pirate/characters/captain.svg,yes,,assets/captain.jpg (USABLE_TEMP),candidate available (needs approval)
+character.pip,yes,character,256x256,/assets/adventures/pirate/characters/pip.svg,yes,,assets/pip_parrot.jpg (USABLE_TEMP_AFTER_CLEANUP),candidate available (needs approval)
+ship.starter,yes,ship,320x240,/assets/adventures/pirate/ships/ship-starter.svg,yes,item:ship-starter; crew-camp ship scene,assets/ships/starter_ship_256.png (USABLE_TEMP),candidate available (needs approval)
+item.supply-crate,yes,collectible,96x96,/assets/adventures/pirate/collectibles/supply-crate.svg,yes,item:supply-crate,,no art candidate
+item.compass-feather,yes,collectible,96x96,/assets/adventures/pirate/collectibles/compass-feather.svg,yes,item:compass-feather,,no art candidate
+scene.shipwreck-cove,yes,scene,1600x900,/assets/adventures/pirate/scenes/shipwreck-cove.svg,yes,chapter:shipwreck-cove,,no art candidate
+item.salvage-plank,yes,collectible,96x96,/assets/adventures/pirate/collectibles/salvage-plank.svg,yes,item:salvage-plank,,no art candidate
+item.rope-coil,yes,collectible,96x96,/assets/adventures/pirate/collectibles/rope-coil.svg,yes,item:rope-coil,,no art candidate
+item.chart-piece,yes,collectible,96x96,/assets/adventures/pirate/collectibles/chart-piece.svg,yes,item:chart-piece,,no art candidate
+item.kraken-tooth,yes,collectible,96x96,/assets/adventures/pirate/collectibles/kraken-tooth.svg,yes,item:kraken-tooth,,no art candidate
+item.jade-idol,yes,collectible,96x96,/assets/adventures/pirate/collectibles/jade-idol.svg,yes,item:jade-idol,,no art candidate
+item.stone-mask,yes,collectible,96x96,/assets/adventures/pirate/collectibles/stone-mask.svg,yes,item:stone-mask,,no art candidate
+item.sun-key,yes,collectible,96x96,/assets/adventures/pirate/collectibles/sun-key.svg,yes,item:sun-key,,no art candidate
+item.blackbeards-treasure,yes,collectible,96x96,/assets/adventures/pirate/collectibles/blackbeards-treasure.svg,yes,item:blackbeards-treasure,,no art candidate
+cosmetic.blackbeards-flag,yes,icon,96x96,/assets/adventures/pirate/cosmetics/blackbeards-flag.svg,yes,item:cosmetic-blackbeards-flag,,no art candidate
+item.map-fragment,yes,collectible,96x96,/assets/adventures/pirate/collectibles/map-fragment.svg,yes,item:map-fragment,,no art candidate
+item.cove-pearl,yes,collectible,96x96,/assets/adventures/pirate/collectibles/cove-pearl.svg,yes,item:cove-pearl,,no art candidate
+item.gold-doubloon,yes,collectible,96x96,/assets/adventures/pirate/collectibles/gold-doubloon.svg,yes,item:gold-doubloon,,no art candidate
+upgrade.patched-sail,yes,icon,96x96,/assets/adventures/pirate/cosmetics/patched-sail.svg,yes,item:upgrade-patched-sail,,no art candidate
+upgrade.parrot-perch,yes,icon,96x96,/assets/adventures/pirate/cosmetics/parrot-perch.svg,yes,item:upgrade-parrot-perch,,no art candidate
+upgrade.brass-cannon,yes,icon,96x96,/assets/adventures/pirate/cosmetics/brass-cannon.svg,yes,item:upgrade-brass-cannon,,no art candidate
+cosmetic.captain-hat,yes,icon,96x96,/assets/adventures/pirate/cosmetics/captain-hat.svg,yes,item:cosmetic-captain-hat,,no art candidate
+ui.marker,yes,marker,64x64,/assets/adventures/pirate/ui/marker.svg,yes,,,no art candidate
+achievement.able-seaman,"NO (referenced in code, no entry)",,,,,achievement:pirate.ten-chores,,no art candidate
+achievement.anchors-aweigh,"NO (referenced in code, no entry)",,,,,achievement:pirate.set-sail,,no art candidate
+achievement.clue-reader,"NO (referenced in code, no entry)",,,,,achievement:pirate.clue-reader,,no art candidate
+achievement.deckhand,"NO (referenced in code, no entry)",,,,,achievement:pirate.first-chore,,no art candidate
+achievement.kraken-slayer,"NO (referenced in code, no entry)",,,,,achievement:pirate.kraken-slayer,,no art candidate
+achievement.legend,"NO (referenced in code, no entry)",,,,,achievement:pirate.legend,,no art candidate
+achievement.master-shipwright,"NO (referenced in code, no entry)",,,,,achievement:pirate.shipwright,,no art candidate
+achievement.reef-navigator,"NO (referenced in code, no entry)",,,,,achievement:pirate.reef-navigator,,no art candidate
+achievement.ship-shape,"NO (referenced in code, no entry)",,,,,achievement:pirate.first-routine,,no art candidate
+achievement.temple-explorer,"NO (referenced in code, no entry)",,,,,achievement:pirate.temple-explorer,,no art candidate
+achievement.true-north,"NO (referenced in code, no entry)",,,,,achievement:pirate.compass-found,,no art candidate
+item.magic-compass,"NO (referenced in code, no entry)",,,,,item:magic-compass,,no art candidate
+ship.captain,"NO (referenced in code, no entry)",,,,,item:ship-captain,assets/ships/black_ship_256.png (USABLE_TEMP),candidate available (needs approval)
+ship.explorer,"NO (referenced in code, no entry)",,,,,item:ship-explorer,assets/ships/red_ship_256.png (USABLE_TEMP_AFTER_CLEANUP),candidate available (needs approval)
+ship.legendary,"NO (referenced in code, no entry)",,,,,item:ship-legendary,assets/ships/gold_ship_256.png (USABLE_TEMP),candidate available (needs approval)
+ship.voyager,"NO (referenced in code, no entry)",,,,,item:ship-voyager,assets/ships/blue_ship_256.png (USABLE_TEMP_AFTER_CLEANUP),candidate available (needs approval)
+location.home-port.crew-camp,PROPOSED (not in manifest),,,,,,assets/crew_camp.jpg (USABLE_TEMP),new manifest entry needed with the art
+location.home-port.hidden-cove,PROPOSED (not in manifest),,,,,,assets/hidden_cove.jpg (USABLE_TEMP),new manifest entry needed with the art
+location.home-port.lighthouse,PROPOSED (not in manifest),,,,,,assets/lighthouse.jpg (USABLE_TEMP),new manifest entry needed with the art
+location.home-port.quest-board,PROPOSED (not in manifest),,,,,,assets/quest_board.jpg (USABLE_TEMP),new manifest entry needed with the art
+location.home-port.starter-ship,PROPOSED (not in manifest),,,,,,assets/dock.jpg (USABLE_TEMP),new manifest entry needed with the art
+location.home-port.supply-shop,PROPOSED (not in manifest),,,,,,assets/supply_shop.jpg (USABLE_TEMP),new manifest entry needed with the art
+marker.island.home-port,PROPOSED (not in manifest),,,,,,assets/islands/base/home_port.png (USABLE_TEMP_AFTER_CLEANUP),new manifest entry needed with the art
+marker.island.parrot-island,PROPOSED (not in manifest),,,,,,assets/islands/base/parrot_island.png (USABLE_TEMP_AFTER_CLEANUP),new manifest entry needed with the art
+marker.island.shipwreck-cove,PROPOSED (not in manifest),,,,,,assets/islands/base/shipwreck_cove.png (USABLE_TEMP_AFTER_CLEANUP),new manifest entry needed with the art
+marker.island.skull-reef,PROPOSED (not in manifest),,,,,,assets/islands/base/skull_reef.png (USABLE_TEMP_AFTER_CLEANUP),new manifest entry needed with the art
+marker.island.treasure-island,PROPOSED (not in manifest),,,,,,assets/islands/base/treasure_island.png (USABLE_TEMP_AFTER_CLEANUP),new manifest entry needed with the art
+marker.island.whispering-jungle,PROPOSED (not in manifest),,,,,,assets/islands/base/whispering_jungle.png (USABLE_TEMP_AFTER_CLEANUP),new manifest entry needed with the art
+ui.reward-chest,PROPOSED (not in manifest),,,,,,assets/reward_chest.jpg (USABLE_TEMP),new manifest entry needed with the art
