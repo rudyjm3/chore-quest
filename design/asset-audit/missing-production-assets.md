@@ -2,7 +2,7 @@
 
 Basis: the current manifest (29 entries, all `placeholder: true` SVGs), the assets the code references that have **no manifest entry** (16), the new roles the received prototypes suggest, and the four incoming packages (all classified prototype or reference). Nothing has been created or changed; this is a plan.
 
-Visual direction: **not yet confirmed.** The separately provided preferred Parrot Island reference image was **not received** with the four ZIPs. The two Parrot Island concept boards in the v5 pack (`concept/parrot_island_gameplay_concept.png`, `concept/island_assets_concept.png`) are candidates only; they have not been treated as approved.
+Visual direction: the owner's **preferred Parrot Island reference is the approved direction** (`../reference/parrot-island-approved-reference.png`, analysed in `visual-direction.md`). It covers Parrot Island only; whether it applies to all six chapters is an open question. The earlier concept boards remain reference material.
 
 Sizes: the manifest `width`/`height` is the 1x display size. Production files should be exported at 2x (for example scenes 3200x1800, items 192x192, ships 640x480) as WebP or PNG with transparency, or SVG where the art is vector. Keep each manifest id; only the path and the declared size change.
 
@@ -16,7 +16,7 @@ Sizes: the manifest `width`/`height` is the 1x display size. Production files sh
 
 | Category                                       |          Needed | Prototype covers it                                                                      | Gap                                                                    | Priority                              |
 | ---------------------------------------------- | --------------: | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------- |
-| Style guide and approved reference             |               1 | A concept board (unconfirmed)                                                            | Approved Parrot Island reference, palette, outline, lighting, camera   | P0 (blocks all)                       |
+| Style guide                                    |               1 | The approved Parrot Island reference (a board, not a guide)                              | Palette values, outline weights, lighting, camera, written down        | P0 (blocks all)                       |
 | Branding and PWA icons                         |              ~8 | None (logo exists only inside concept boards and the baked map HUD)                      | All                                                                    | P0                                    |
 | World map base + island markers                |           1 + 6 | Ocean SVG; 6 island bases (all need speck cleanup)                                       | Clean production base and 6 hi-res islands with consistent ground line | P0                                    |
 | Chapter scenes (1600x900)                      |               6 | Home Port: 1 usable-as-is crop; Parrot Island: baked-UI crop (regenerate); other 4: none | 5 new + 1 production redo; hotspot-safe composition                    | P0                                    |
@@ -37,13 +37,13 @@ Sizes: the manifest `width`/`height` is the 1x display size. Production files sh
 
 ### Branding and PWA (P0)
 
-| Item               | Spec                                                            |
-| ------------------ | --------------------------------------------------------------- |
-| Logo and wordmark  | Vector master, light and dark backgrounds                       |
-| App icon           | 512x512 and 192x192 PNG, plus a maskable 512x512 with safe zone |
-| Apple touch icon   | 180x180                                                         |
-| Favicon            | SVG plus 32x32                                                  |
-| Social/share image | 1200x630                                                        |
+| Item               | Spec                                                                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logo and wordmark  | Vector master, light and dark backgrounds. The approved reference shows a gold "CHORE QUESTS" wordmark on a pirate-hat badge; the earlier boards show a different logo, so one must be chosen |
+| App icon           | 512x512 and 192x192 PNG, plus a maskable 512x512 with safe zone                                                                                                                               |
+| Apple touch icon   | 180x180                                                                                                                                                                                       |
+| Favicon            | SVG plus 32x32                                                                                                                                                                                |
+| Social/share image | 1200x630                                                                                                                                                                                      |
 
 ### World map and islands (P0)
 
@@ -99,7 +99,7 @@ Symbols (compass N/E/S/W, the four Kraken tentacle moves, the lock's anchor, sku
 
 Each step lists what it unblocks. Steps 2 to 4 can run in parallel once step 1 is done.
 
-1. **Confirm the visual direction (P0, blocks all).** Supply the approved Parrot Island reference, then write a one-page style guide (palette, outline weight, lighting, camera) and fill in the provenance table. Decide whether the pilot ships prototype art, production art, or the current placeholders.
+1. **Write the style guide (P0, blocks all).** The approved Parrot Island reference is in; turn it into a one-page guide (palette, outline weight, lighting, camera), settle one logo and whether the direction covers all six chapters, and fill in the provenance table. Decide whether the pilot ships prototype art, production art, or the current placeholders.
 2. **Branding and PWA icons (P0).** Small, fast, and required by Phase 6 slice F.
 3. **Ship rig, five tiers (P0).** Unblocks the shop, treasure chest and crew camp, the per-tier ship in the crew camp, and cosmetic overlays.
 4. **World map base and six island markers (P0).** The first screen a child sees. The prototype ocean and the six island bases can bridge the gap after cleanup if the owner approves.

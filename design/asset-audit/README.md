@@ -13,13 +13,14 @@ Date: 2026-11-17. Scope: the four ZIP packages received for the pirate adventure
 | Image dimension and transparency audit (109 images, per file)                                                            | [`dimension-transparency-audit.csv`](dimension-transparency-audit.csv) |
 | Ship anchor assessment                                                                                                   | [`ship-anchor-assessment.md`](ship-anchor-assessment.md)               |
 | Provenance and license records (rights review pending)                                                                   | [`PROVENANCE.md`](PROVENANCE.md)                                       |
+| Approved visual direction and how the prototypes compare                                                                 | [`visual-direction.md`](visual-direction.md)                           |
 
 The extracted packages are in `design/incoming/<package name>/`, with the original filenames and directory structure.
 
 ## Headline findings
 
 1. **Everything received is prototype or reference material.** None of it is production-ready: the packs say so themselves, and the audit agrees.
-2. **The "separately provided preferred Parrot Island reference image" was not received.** Only the four ZIPs arrived. The visual direction is therefore **unconfirmed**, and nothing was classified as approved. The two Parrot Island concept boards in the v5 pack are candidates only.
+2. **The preferred Parrot Island reference image was received after the first pass and is now the approved visual direction** (stored in `design/reference/`, compared in [`visual-direction.md`](visual-direction.md)). It is a reference board with UI baked in, not a source of assets. Earlier artwork stays prototype or reference material, and every file now has a `direction_check` in the mapping: 9 are **off-direction** (including the Parrot Island scene and token, the Pip portrait and the dark HUD map) and 19 are **partial** matches.
 3. **Usable temporarily: 22 files** (13 as-is, 9 after a small mechanical cleanup): five ship icons (two need speck removal), a clean ocean SVG, one Home Port scene, six Home Port location crops, a reward-chest crop, two character portraits, and the six island bases (after speck cleanup). See the usable list.
 4. **Still missing for production:** five of the six chapter scenes, every item icon, cosmetic, achievement badge, branding and PWA asset, all puzzle art and all audio. See the missing list. The manifest has **29** placeholder entries, and the code references **16 more ids with no manifest entry** (four ships, `item.magic-compass`, eleven achievement icons).
 5. **The ships cannot support reliable head/sail/deck/flag anchors.** The flag and sail positions differ by 10 to 17% of the ship width between tiers. Use them as whole-ship icons only. See the anchor assessment.
@@ -92,7 +93,7 @@ The packs' HTML demos and gameplay specs are prototypes. The game in this reposi
 
 | #   | Change                                                                                                                                                                               | Risk                                                                                                       | Needs                            |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| 1   | Approve or supply the visual direction and a style guide                                                                                                                             | Blocks everything                                                                                          | Owner                            |
+| 1   | Turn the approved reference into a one-page style guide (palette, outline, lighting)                                                                                                 | Blocks the production art                                                                                  | Owner or artist                  |
 | 2   | Add the five prototype ships as **new files** (`ships/ship-*.png`) and add the four missing manifest entries; keep the SVG placeholder for `ship.starter` until a switch is approved | Low. Icons only; no anchors                                                                                | Owner approval                   |
 | 3   | Run a mechanical cleanup (remove specks, crop frame remnants) into a separate `prototype/` folder, never overwriting the incoming files                                              | Low                                                                                                        | Approval                         |
 | 4   | Show the right ship in the crew camp (highest owned tier) and make anchors per ship                                                                                                  | Code change in `camp.ts` and the crew-camp page; do only with the rigged set                               | Phase 6 slice E                  |
@@ -104,7 +105,7 @@ Preserved: all asset ids, every authored hotspot position, and every working pla
 
 ## Open questions
 
-1. **Please send the approved Parrot Island reference image** (it did not arrive), or confirm which concept board is the direction.
+1. Does the approved Parrot Island direction apply to all six chapters, or should each chapter get its own reference? Which single logo is the brand logo (the reference and the earlier boards differ)?
 2. Pilot art decision: ship the current placeholders, the approved prototypes (after cleanup), or wait for production art?
 3. Are the proposed changes 2, 3 and 5 approved as temporary prototype use, and is a hotspot retune (change 6) acceptable?
 4. Please provide the provenance unknowns listed in `PROVENANCE.md` (prompts, dates, service tier, edits, trademark status).

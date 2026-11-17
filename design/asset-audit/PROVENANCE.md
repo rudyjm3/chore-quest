@@ -2,6 +2,10 @@
 
 Status of this record: **commercial licensing and rights verification are PENDING owner review.** Nothing below asserts exclusive copyright ownership, and nothing here is legal advice.
 
+## The approved reference image
+
+`design/reference/parrot-island-approved-reference.png` (1536x1024, SHA-256 `42d41ad4a6a77e52f7af5cb8545b20d58eb521e063decd14f91d67970acd3e9d`) was provided by the owner on 2026-11-17 as the preferred Parrot Island image. **How it was made is not stated** (it looks like the same family as the packs, but that is an assumption). Its generation details and rights status are among the unknowns below and are pending owner review like everything else here.
+
 ## What the owner has told us
 
 - The four packages were created for this project through **ChatGPT / OpenAI image generation**, at the project owner's direction.
