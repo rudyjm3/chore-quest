@@ -1,0 +1,62 @@
+# Provenance and license record
+
+Status of this record: **commercial licensing and rights verification are PENDING owner review.** Nothing below asserts exclusive copyright ownership, and nothing here is legal advice.
+
+## What the owner has told us
+
+- The four packages were created for this project through **ChatGPT / OpenAI image generation**, at the project owner's direction.
+- Some illustrations were then **cropped, resized, or converted** into transparent prototype sprites (the packs' own READMEs describe cut-outs made from "generated concept sheets", islands "extracted from an earlier concept sheet" whose baked labels were cropped off and which were then enlarged onto 640x480 canvases, ship sprites "auto-matted", and a Pillow-generated bobbing animation).
+- **No external commercial asset pack** is identified in these packages.
+
+## Packages received
+
+| Pack (folder under `design/incoming/`)    | Version | ZIP SHA-256                                                        | Size         | Files |
+| ----------------------------------------- | ------- | ------------------------------------------------------------------ | ------------ | ----- |
+| `Chore_Quests_Home_Port_Chapter_1_v4`     | v4      | `69cd20f7e911b8b5d944879a7b9e6c24b4bb1aacb4aecdae93bb2cd9de041a06` | 16,281,560 B | 26    |
+| `Chore_Quests_Parrot_Island_Chapter_2_v5` | v5      | `f46e14b2937dea91465ef648c6f4065174e3ab480be2f87c3f96d79129900fcc` | 12,872,422 B | 24    |
+| `Chore_Quests_Pirate_Island_Assets_v3`    | v3      | `548861ccaa87f4abb4293b040228a60150131a90eb20a64d37423f38c9511c63` | 12,040,762 B | 39    |
+| `Chore_Quests_Pirate_Ship_Assets_v2`      | v2      | `1a37ac27336e1e326cdfc71cf588db67e7914f9e155128e6d94c16a272b5fbfe` | 3,226,738 B  | 36    |
+
+Received 2026-11-17 through the Claude upload channel. Each ZIP was extracted into its own folder with original filenames and directory structure kept; every archive path was checked to stay inside its folder before extraction.
+
+## Per-file provenance
+
+| Group                                                                                                                                                                                                                                                                                 | Provenance recorded                                                                                                                                         | Evidence                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `concept/*.png` (5 boards)                                                                                                                                                                                                                                                            | AI-generated concept boards (ChatGPT / OpenAI image generation)                                                                                             | Pack READMEs; contain baked UI and text                                  |
+| Scene and location JPGs (`home_port_scene`, `home_port_alt`, `dock`, `supply_shop`, `crew_camp`, `quest_board`, `lighthouse`, `hidden_cove`, `reward_chest`, `parrot_island_scene`, `compass_shrine`, `jungle_bridge`, `treehouse`, `waterfalls`, `shipwreck_beach`, `adventure_map`) | AI-generated, **cropped from concept art**                                                                                                                  | Pack READMEs and `asset_manifest.json` ("concept-derived", "scene crop") |
+| Characters (`captain`, `pip_parrot`, `child_pirate`)                                                                                                                                                                                                                                  | AI-generated, cropped from concept art                                                                                                                      | Pack READMEs                                                             |
+| Islands (`islands/*/*.png`, 30 in Island Assets v3; 6 in Ship Assets v2)                                                                                                                                                                                                              | AI-generated, extracted from a concept sheet, upscaled, background removed                                                                                  | Island Assets v3 README ("quality notes")                                |
+| Ships (`ships/*_256.png`, `*_source.png`, `animation/*`)                                                                                                                                                                                                                              | AI-generated, auto-matted cut-outs, standardised to 256x256; animation frames are scripted shifts of the starter ship                                       | Ship Assets v2 README and manifest                                       |
+| `ocean_background.svg`                                                                                                                                                                                                                                                                | Plain vector SVG (868 bytes: gradient and wave pattern), not a raster image-generation output; how it was made is not stated in the pack (owner to confirm) | Read directly: no scripts, no external references                        |
+| HTML demos and preview PNGs                                                                                                                                                                                                                                                           | Prototype code and screenshots made for the demos                                                                                                           | Pack READMEs                                                             |
+
+## Unknowns that the owner should supply
+
+These are not in the packages and are needed to close the rights review:
+
+1. The **service terms and plan/tier** in force when each image was generated, and the date range of generation.
+2. The **prompts** (or a description of them) and any **reference images** that were supplied to the generator, including whether any artwork, logo, character or style from an existing product or franchise was named or uploaded.
+3. Which images were **edited by hand** (cropping, matting, scripting) and by whom.
+4. Whether the **"Chore Quests" name and logo** (seen in the concept boards) are cleared as a trademark.
+5. Whether any person's likeness or a recognisable existing character appears (none was identified during the visual review, but the review was not a clearance search).
+
+## Points for the owner or counsel to check (not conclusions)
+
+- Whether the generation service's terms allow **commercial use** of outputs in a children's app, and what they say about output ownership and indemnity.
+- That protection for **purely AI-generated imagery can be limited or unsettled** in some jurisdictions, which affects how exclusive the project's rights can be and how to describe ownership in a privacy policy or app-store listing.
+- Whether replacing the prototypes with **human-illustrated or commissioned** production art (the plan in `missing-production-assets.md`) should carry a written work-for-hire or licence, and whether it should be recorded in this file per asset.
+- Marking each production asset in the manifest with a provenance field (source, date, licence, reviewer) before launch.
+
+## Rule for this repository until the review is done
+
+All incoming artwork is **prototype/reference material**. It is not production-approved, it is not copied into `public/`, and it must not be shipped to the pilot families without the owner's sign-off recorded here.
+
+| Date | Reviewer | Decision | Notes                  |
+| ---- | -------- | -------- | ---------------------- |
+|      |          |          | _Pending owner review_ |
+
+## Security notes on the received files
+
+- Archive paths contained no absolute or parent-directory entries.
+- The six HTML files and one SVG were **read as text, never executed or rendered in a browser**. None references an external URL or makes network calls (no `fetch`, `XMLHttpRequest`, `eval` or `document.write`); each contains a single `<script>` tag (counted by line). The SVG has no scripts or external references.
