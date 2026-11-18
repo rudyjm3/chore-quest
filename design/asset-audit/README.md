@@ -4,16 +4,16 @@ Date: 2026-11-17. Scope: the four ZIP packages received for the pirate adventure
 
 ## Deliverables
 
-| Deliverable                                                                                                              | File                                                                   |
-| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| Updated asset inventory (manifest-centric: 29 manifest ids, 16 referenced in code without an entry, 11 proposed new ids) | [`current-manifest-inventory.csv`](current-manifest-inventory.csv)     |
-| Source-to-manifest mapping (116 source files: filename, intended manifest id, proposed target path, status)              | [`source-to-manifest-mapping.csv`](source-to-manifest-mapping.csv)     |
-| Usable prototype asset list (22 files)                                                                                   | [`usable-prototype-assets.md`](usable-prototype-assets.md)             |
-| Missing production asset list and recommended production order                                                           | [`missing-production-assets.md`](missing-production-assets.md)         |
-| Image dimension and transparency audit (109 images, per file)                                                            | [`dimension-transparency-audit.csv`](dimension-transparency-audit.csv) |
-| Ship anchor assessment                                                                                                   | [`ship-anchor-assessment.md`](ship-anchor-assessment.md)               |
-| Provenance and license records (rights review pending)                                                                   | [`PROVENANCE.md`](PROVENANCE.md)                                       |
-| Approved visual direction and how the prototypes compare                                                                 | [`visual-direction.md`](visual-direction.md)                           |
+| Deliverable                                                                                                                                                                                                             | File                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Updated asset inventory (manifest-centric: 29 manifest ids, 16 referenced in code without an entry, 13 proposed new ids: six Home Port location illustrations, six island markers and one reward chest; 58 rows in all) | [`current-manifest-inventory.csv`](current-manifest-inventory.csv)     |
+| Source-to-manifest mapping (116 source files: filename, intended manifest id, proposed target path, status)                                                                                                             | [`source-to-manifest-mapping.csv`](source-to-manifest-mapping.csv)     |
+| Usable prototype asset list (22 files)                                                                                                                                                                                  | [`usable-prototype-assets.md`](usable-prototype-assets.md)             |
+| Missing production asset list and recommended production order                                                                                                                                                          | [`missing-production-assets.md`](missing-production-assets.md)         |
+| Image dimension and transparency audit (109 images, per file)                                                                                                                                                           | [`dimension-transparency-audit.csv`](dimension-transparency-audit.csv) |
+| Ship anchor assessment                                                                                                                                                                                                  | [`ship-anchor-assessment.md`](ship-anchor-assessment.md)               |
+| Provenance and license records (rights review pending)                                                                                                                                                                  | [`PROVENANCE.md`](PROVENANCE.md)                                       |
+| Approved visual direction and how the prototypes compare                                                                                                                                                                | [`visual-direction.md`](visual-direction.md)                           |
 
 The extracted packages are in `design/incoming/<package name>/`, with the original filenames and directory structure.
 
