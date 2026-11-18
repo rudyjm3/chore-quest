@@ -2,7 +2,7 @@
 
 Basis: the current manifest (29 entries, all `placeholder: true` SVGs), the assets the code references that have **no manifest entry** (16), the new roles the received prototypes suggest, and the four incoming packages (all classified prototype or reference). Nothing has been created or changed; this is a plan.
 
-Visual direction: the owner's **preferred Parrot Island reference is the approved direction** (`../reference/parrot-island-approved-reference.png`, analysed in `visual-direction.md`). It covers Parrot Island only; whether it applies to all six chapters is an open question. The earlier concept boards remain reference material.
+Visual direction: the owner's **preferred Parrot Island reference is the approved direction for all six chapters** (confirmed 2026-11-18; `../reference/parrot-island-approved-reference.png`, analysed in `visual-direction.md`). The earlier concept boards remain reference material.
 
 Sizes: the manifest `width`/`height` is the 1x display size. Production files should be exported at 2x (for example scenes 3200x1800, items 192x192, ships 640x480) as WebP or PNG with transparency, or SVG where the art is vector. Keep each manifest id; only the path and the declared size change.
 
@@ -99,7 +99,7 @@ Symbols (compass N/E/S/W, the four Kraken tentacle moves, the lock's anchor, sku
 
 Each step lists what it unblocks. Steps 2 to 4 can run in parallel once step 1 is done.
 
-1. **Write the style guide (P0, blocks all).** The approved Parrot Island reference is in; turn it into a one-page guide (palette, outline weight, lighting, camera), settle one logo and whether the direction covers all six chapters, and fill in the provenance table. Decide whether the pilot ships prototype art, production art, or the current placeholders.
+1. **Write the style guide (P0, blocks all).** The approved Parrot Island reference is in and applies to all six chapters; turn it into a one-page guide (palette, outline weight, lighting, camera), settle one logo (owner to decide later), and fill in the provenance table. Decide whether the pilot ships prototype art, production art, or the current placeholders.
 2. **Branding and PWA icons (P0).** Small, fast, and required by Phase 6 slice F.
 3. **Ship rig, five tiers (P0).** Unblocks the shop, treasure chest and crew camp, the per-tier ship in the crew camp, and cosmetic overlays.
 4. **World map base and six island markers (P0).** The first screen a child sees. The prototype ocean and the six island bases can bridge the gap after cleanup if the owner approves.

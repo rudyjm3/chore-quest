@@ -2,7 +2,7 @@
 
 Received 2026-11-17 from the project owner as "the preferred Parrot Island image". Stored at [`../reference/parrot-island-approved-reference.png`](../reference/parrot-island-approved-reference.png) (1536x1024, RGB, SHA-256 `42d41ad4a6a77e52f7af5cb8545b20d58eb521e063decd14f91d67970acd3e9d`).
 
-**Status:** the owner's approved direction for the look of the game, starting with Parrot Island. It is a **reference board, not an asset**: every element has UI, text or a panel baked in, so nothing can be cut out of it for production. Its provenance and rights are not yet recorded (see `PROVENANCE.md`). The earlier packs stay prototype material unless the owner confirms otherwise.
+**Status:** the owner's approved direction for the look of the whole game (confirmed 2026-11-18 to apply to **all six chapters**); Parrot Island is the worked example. It is a **reference board, not an asset**: every element has UI, text or a panel baked in, so nothing can be cut out of it for production. Per the owner, it was generated with ChatGPT and is described as original art; rights verification is still pending (see `PROVENANCE.md`). The earlier packs stay prototype material unless the owner confirms otherwise.
 
 ## What the reference shows
 
@@ -57,4 +57,4 @@ The reference is a look, not a game spec. The built game differs, so the followi
 - The open question about the missing reference is closed; the approved direction is recorded here.
 - No file was reclassified as approved: the packs stay prototype material, and nothing was copied into `public/` or the manifest.
 - Priority 1 of the production order (confirm the direction) is now a **style guide** task: turn the traits above into a one-page guide with palette values, outline weights and lighting.
-- Open points for the owner: whether this direction applies to all six chapters or each needs its own reference; the single logo; and whether the Parrot Island layout should drive a hotspot retune.
+- Open point for the owner: the single logo (to be decided later). **Settled 2026-11-18: the approved direction applies to all six chapters**, so the other five chapters follow the same style traits until a chapter-specific reference is supplied. Whether the Parrot Island layout should drive a hotspot retune is still open.

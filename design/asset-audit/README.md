@@ -105,8 +105,8 @@ Preserved: all asset ids, every authored hotspot position, and every working pla
 
 ## Open questions
 
-1. Does the approved Parrot Island direction apply to all six chapters, or should each chapter get its own reference? Which single logo is the brand logo (the reference and the earlier boards differ)?
+1. **Logo:** which single logo is the brand logo? The owner will say later; the reference and the earlier boards differ, and trademark clearance is pending. (Settled: the approved direction applies to **all six chapters**.)
 2. Pilot art decision: ship the current placeholders, the approved prototypes (after cleanup), or wait for production art?
 3. Are the proposed changes 2, 3 and 5 approved as temporary prototype use, and is a hotspot retune (change 6) acceptable?
-4. Please provide the provenance unknowns listed in `PROVENANCE.md` (prompts, dates, service tier, edits, trademark status).
+4. Provenance: the owner states that all images, including the approved reference, were generated with ChatGPT and describes them as original art. Rights verification stays pending; the remaining unknowns in `PROVENANCE.md` (prompts, dates, service tier, hand edits, trademark status) are still to be supplied.
 5. Where should the 45 MB `design/incoming/` live: git, git-ignored, or Git LFS?
